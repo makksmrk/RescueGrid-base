@@ -1,0 +1,22 @@
+services:
+
+  control-center:
+    build: ./control-center
+    container_name: control-center
+
+    ports:
+      - "8080:8080"
+
+  water-sensor:
+    build: ./water-sensor
+    container_name: water-sensor
+
+    depends_on:
+      - control-center
+
+  camera-sensor:
+    build: ./camera-sensor
+    container_name: camera-sensor
+
+    depends_on:
+      - control-center
