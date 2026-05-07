@@ -30,10 +30,10 @@ function placeInfrastructure(x, y, type) {
     };
 }
 
-placeInfrastructure(2, 2, "charging_station");
-placeInfrastructure(5, 8, "bridge");
-placeInfrastructure(10, 4, "harbor");
-placeInfrastructure(15, 15, "depot");
+placeInfrastructure(2, 2, "charging_station"); // C
+placeInfrastructure(5, 8, "bridge"); // B
+placeInfrastructure(10, 4, "harbor"); // H
+placeInfrastructure(15, 15, "depot"); // D
 
 module.exports = {
     islandMap,

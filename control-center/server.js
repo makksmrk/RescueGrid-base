@@ -59,11 +59,7 @@ const server = net.createServer((socket) => {
             const method = request.method;
             const path = request.path;
 
-            /*
-            ============================================
-            GET /
-            ============================================
-            */
+            // GET /
 
             if (method === "GET" && path === "/") {
 
@@ -260,3 +256,34 @@ http://localhost:${PORT}
 --
 `);
 });
+
+
+// docker compose up --build
+// curl http://localhost:8080/status
+// curl http://localhost:8080/map
+//
+/*
+
+for i in {1..50}
+do
+curl -X POST http://localhost:8080/unit \
+-H "Content-Type: application/json" \
+-d "{\"id\":\"drone-$i\",\"type\":\"drone\"}"
+done
+
+
+ */
+
+/*
+
+Unit registrieren
+
+curl -X POST http://localhost:8080/unit \
+-H "Content-Type: application/json" \
+-d '{
+  "id":"drone-1",
+  "type":"drone"
+}'
+
+
+*/

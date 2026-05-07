@@ -38,4 +38,4 @@ function sendIncident() {
     }
 }
 
-setInterval(sendIncident, 7000);
+// setInterval(sendIncident, 7000);
