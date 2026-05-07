@@ -87,11 +87,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            GET /status
-            ============================================
-            */
+            // GET STATUS
 
             if (method === "GET" && path === "/status") {
 
@@ -113,11 +109,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            GET /map
-            ============================================
-            */
+            // GET map
 
             if (method === "GET" && path === "/map") {
 
@@ -132,11 +124,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            POST /unit
-            ============================================
-            */
+            // POST /unit
 
             if (method === "POST" && path === "/unit") {
 
@@ -160,11 +148,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            POST /sensor
-            ============================================
-            */
+            // POST /sensor
 
             if (method === "POST" && path === "/sensor") {
 
@@ -188,11 +172,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            POST /incident
-            ============================================
-            */
+            // POST /incident
 
             if (method === "POST" && path === "/incident") {
 
@@ -225,11 +205,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            405
-            ============================================
-            */
+            // 405
 
             if (
                 method !== "GET" &&
@@ -247,11 +223,7 @@ const server = net.createServer((socket) => {
                 return;
             }
 
-            /*
-            ============================================
-            404
-            ============================================
-            */
+            // 404
 
             sendResponse(
                 socket,
@@ -279,12 +251,12 @@ const server = net.createServer((socket) => {
 server.listen(PORT, () => {
 
     console.log(`
-=========================================
+--
 CONTROL CENTER RUNNING
-=========================================
+--
 
 http://localhost:${PORT}
 
-=========================================
+--
 `);
 });
