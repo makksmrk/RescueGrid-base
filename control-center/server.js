@@ -278,12 +278,31 @@ done
 
 Unit registrieren
 
-curl -X POST http://localhost:8080/unit \
--H "Content-Type: application/json" \
--d '{
-  "id":"drone-1",
-  "type":"drone"
-}'
+curl -X POST http://localhost:8080/unit ^
+-H "Content-Type: application/json" ^
+-d "{\"id\":\"drone-1\",\"type\":\"drone\"}"
+
+curl -X POST http://localhost:8080/unit ^
+-H "Content-Type: application/json" ^
+-d "{\"id\":\"rover-1\",\"type\":\"rover\"}"
+
+curl -X POST http://localhost:8080/unit ^
+-H "Content-Type: application/json" ^
+-d "{\"id\":\"supply-1\",\"type\":\"supply_vehicle\"}"
+
+curl -X POST http://localhost:8080/sensor ^
+-H "Content-Type: application/json" ^
+-d "{\"id\":\"water-sensor-1\",\"type\":\"water-level\"}"
+
+curl -X POST http://localhost:8080/sensor ^
+-H "Content-Type: application/json" ^
+-d "{\"id\":\"camera-1\",\"type\":\"camera\"}"
+
+curl -X POST http://localhost:8080/incident ^
+-H "Content-Type: application/json" ^
+-d "{\"type\":\"water_level_alert\",\"sensor\":\"water-sensor-1\",\"x\":5,\"y\":7,\"value\":91}"
+
+curl http://localhost:8080/does-not-exist
 
 
 */
