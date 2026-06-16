@@ -28,6 +28,7 @@ function sendResponse(
     );
 
     socket.end();
+    socket.destroy();
 }
 
 function getCell(x, y) {

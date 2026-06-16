@@ -1,0 +1,54 @@
+@baseUrl = http://localhost:8080
+
+POST localhost:8080/unit
+
+{"id":"drone-1","type":"drone"}
+
+###
+
+POST localhost:8080/unit
+
+{"id":"rover-1","type":"rover"}
+
+###
+
+POST localhost:8080/unit
+
+{"id":"supply-1","type":"supply_vehicle"}
+
+###
+
+POST localhost:8080/sensor
+
+{"id":"water-sensor-1","type":"water-level"}
+
+###
+
+POST localhost:8080/sensor
+
+{"id":"camera-1","type":"camera"}
+
+###
+
+POST localhost:8080/incident
+
+{"type":"water_level_alert","sensor":"water-sensor-1","x":5,"y":7,"value":91}
+
+### Тест несуществующего эндпоинта
+# Ожидаемый ответ:
+GET {{baseUrl}}/does-not-exist
+
+### 1. Получить HTML-дашборд диспетчерской (Leitstelle)
+# Ожидаемый ответ: 200 OK
+# Content-Type: text/html
+GET {{baseUrl}}/
+
+### 2. Получить текущий общий статус системы
+# Ожидаемый ответ: 200 OK
+# Content-Type: application/json
+GET {{baseUrl}}/status
+
+### 3. Получить полную карту острова в формате JSON
+# Ожидаемый ответ: 200 OK
+# Content-Type: application/json
+GET {{baseUrl}}/map
