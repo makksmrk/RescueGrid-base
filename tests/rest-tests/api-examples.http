@@ -1,54 +1,204 @@
 @baseUrl = http://localhost:8080
 
-POST localhost:8080/unit
-
-{"id":"drone-1","type":"drone"}
-
-###
-
-POST localhost:8080/unit
-
-{"id":"rover-1","type":"rover"}
-
-###
-
-POST localhost:8080/unit
-
-{"id":"supply-1","type":"supply_vehicle"}
-
-###
-
-POST localhost:8080/sensor
-
-{"id":"water-sensor-1","type":"water-level"}
-
-###
-
-POST localhost:8080/sensor
-
-{"id":"camera-1","type":"camera"}
-
-###
-
-POST localhost:8080/incident
-
-{"type":"water_level_alert","sensor":"water-sensor-1","x":5,"y":7,"value":91}
-
-###
-#
-GET {{baseUrl}}/does-not-exist
-
-###
-#
-# Content-Type: text/html
+### Dashboard
 GET {{baseUrl}}/
 
-###
-#
-# Content-Type: application/json
+### Systemstatus
 GET {{baseUrl}}/status
 
-###
-#
-# Content-Type: application/json
+### Inselkarte
 GET {{baseUrl}}/map
+
+### Drohne registrieren
+POST {{baseUrl}}/unit
+Content-Type: application/json
+
+{
+  "id": "drone-1",
+  "type": "drone",
+  "role": "drone",
+  "status": "IDLE",
+  "rpcHost": "drone-1",
+  "rpcPort": 50052,
+  "capabilities": ["aerial_inspection", "search_person", "water_crossing"]
+}
+
+### Reparatur-Rover registrieren
+POST {{baseUrl}}/unit
+Content-Type: application/json
+
+{
+  "id": "repair-rover-1",
+  "type": "repair_rover",
+  "role": "repair_rover",
+  "status": "IDLE",
+  "rpcHost": "repair-rover-1",
+  "rpcPort": 50053,
+  "capabilities": ["repair_route", "repair_structure"]
+}
+
+### Versorgungs-Rover registrieren
+POST {{baseUrl}}/unit
+Content-Type: application/json
+
+{
+  "id": "supply-rover-1",
+  "type": "supply_rover",
+  "role": "supply_rover",
+  "status": "IDLE",
+  "rpcHost": "supply-rover-1",
+  "rpcPort": 50054,
+  "capabilities": ["deliver_supplies", "restock_material"]
+}
+
+### Vorhandenes Fahrzeug aktualisieren (Upsert)
+POST {{baseUrl}}/unit
+Content-Type: application/json
+
+{
+  "id": "drone-1",
+  "type": "drone",
+  "role": "drone",
+  "status": "IDLE",
+  "rpcHost": "drone-1",
+  "rpcPort": 50052,
+  "capabilities": ["aerial_inspection", "search_person", "water_crossing"]
+}
+
+### Wasserstandssensor registrieren
+POST {{baseUrl}}/sensor
+Content-Type: application/json
+
+{
+  "id": "water-sensor-1",
+  "type": "water-level"
+}
+
+### Kamerasensor registrieren
+POST {{baseUrl}}/sensor
+Content-Type: application/json
+
+{
+  "id": "camera-1",
+  "type": "camera"
+}
+
+### Wasserstandsalarm -> Drohne, Prioritaet 8
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "water_level_alert",
+  "sensor": "water-sensor-1",
+  "x": 5,
+  "y": 7,
+  "value": 91
+}
+
+### Person erkannt -> Drohne, Prioritaet 10
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "person_detected",
+  "sensor": "camera-1",
+  "x": 9,
+  "y": 3,
+  "confidence": 0.94
+}
+
+### Schwer erreichbarer Einsatzort -> Drohne, Prioritaet 8
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "terrain_inspection",
+  "sensor": "camera-1",
+  "x": 2,
+  "y": 14,
+  "hardToReach": true
+}
+
+### Blockierter Weg -> Reparatur-Rover, Prioritaet 7
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "blocked_route",
+  "sensor": "camera-1",
+  "x": 12,
+  "y": 6
+}
+
+### Strukturschaden -> Reparatur-Rover, Prioritaet 7
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "structure_damage",
+  "sensor": "camera-1",
+  "x": 8,
+  "y": 11
+}
+
+### Brueckenschaden -> Reparatur-Rover, Prioritaet 7
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "bridge_damage",
+  "sensor": "camera-1",
+  "x": 16,
+  "y": 4
+}
+
+### Niedriger Bestand -> Versorgungs-Rover, Prioritaet 6
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "supply_low",
+  "sensor": "water-sensor-1",
+  "x": 4,
+  "y": 10,
+  "item": "drinking_water",
+  "remaining": 12
+}
+
+### Materialanforderung -> Versorgungs-Rover, Prioritaet 6
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "material_request",
+  "sensor": "camera-1",
+  "x": 13,
+  "y": 15,
+  "item": "repair_material",
+  "amount": 5
+}
+
+### Unbekannter Incident-Typ -> Incident ohne Mission
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "unknown_incident",
+  "sensor": "camera-1",
+  "x": 1,
+  "y": 1
+}
+
+### Nicht vorhandener Endpoint -> 404 Not Found
+GET {{baseUrl}}/does-not-exist
+
+### Nicht unterstuetzte HTTP-Methode -> 405 Method Not Allowed
+DELETE {{baseUrl}}/unit
+
+### Fehlerhaftes JSON -> 500 Internal Server Error
+POST {{baseUrl}}/incident
+Content-Type: application/json
+
+{
+  "type": "person_detected",
+}

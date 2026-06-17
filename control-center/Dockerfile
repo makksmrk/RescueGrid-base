@@ -2,6 +2,10 @@ FROM node:22
 
 WORKDIR /app
 
-COPY . .
+COPY control-center/package*.json ./
+RUN npm install
 
-CMD ["node", "server.js"]
+COPY control-center ./control-center
+COPY proto ./proto
+
+CMD ["node", "control-center/server.js"]

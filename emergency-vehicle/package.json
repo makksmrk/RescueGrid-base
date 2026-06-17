@@ -1,7 +1,6 @@
 {
-  "name": "control-center",
+  "name": "emergency-vehicle",
   "version": "1.0.0",
-  "main": "server.js",
   "type": "commonjs",
   "dependencies": {
     "@grpc/grpc-js": "^1.13.4",

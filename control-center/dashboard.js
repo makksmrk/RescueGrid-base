@@ -5,6 +5,7 @@ function generateDashboard(state) {
         units,
         sensors,
         incidents,
+        missions,
         width,
         height
     } = state;
@@ -73,6 +74,7 @@ function generateDashboard(state) {
             <li>Units: ${units.length}</li>
             <li>Sensors: ${sensors.length}</li>
             <li>Incidents: ${incidents.length}</li>
+            <li>Missions: ${missions.length}</li>
         </ul>
 
         <h2>Island Map</h2>
@@ -151,6 +153,9 @@ function generateDashboard(state) {
 
         <h2>Incidents</h2>
         <pre>${JSON.stringify(incidents, null, 2)}</pre>
+
+        <h2>Missions</h2>
+        <pre>${JSON.stringify(missions, null, 2)}</pre>
 
     </body>
     </html>

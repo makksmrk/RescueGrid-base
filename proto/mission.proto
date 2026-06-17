@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package mission;
+
+service VehicleService {
+  rpc AssignMission (MissionAssignment) returns (AssignmentAck);
+}
+
+service ControlCenterService {
+  rpc ReportMissionStatus (MissionReport) returns (ReportAck);
+}
+
+message Position {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message MissionAssignment {
+  string mission_id = 1;
+  string incident_id = 2;
+  string type = 3;
+  Position target = 4;
+  int32 priority = 5;
+}
+
+message AssignmentAck {
+  bool accepted = 1;
+  string vehicle_id = 2;
+  string status = 3;
+  string message = 4;
+}
+
+message MissionReport {
+  string mission_id = 1;
+  string vehicle_id = 2;
+  string status = 3;
+  int32 progress = 4;
+  string message = 5;
+}
+
+message ReportAck {
+  bool received = 1;
+}

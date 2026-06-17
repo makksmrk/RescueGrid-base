@@ -1,11 +1,50 @@
 services:
 
   control-center:
-    build: ./control-center
+    build:
+      context: .
+      dockerfile: control-center/Dockerfile
     container_name: control-center
 
     ports:
       - "8080:8080"
+      - "50051:50051"
+
+  drone-1:
+    build:
+      context: .
+      dockerfile: emergency-vehicle/Dockerfile
+    container_name: drone-1
+    environment:
+      VEHICLE_ID: drone-1
+      VEHICLE_ROLE: drone
+      RPC_PORT: 50052
+    depends_on:
+      - control-center
+
+  repair-rover-1:
+    build:
+      context: .
+      dockerfile: emergency-vehicle/Dockerfile
+    container_name: repair-rover-1
+    environment:
+      VEHICLE_ID: repair-rover-1
+      VEHICLE_ROLE: repair_rover
+      RPC_PORT: 50053
+    depends_on:
+      - control-center
+
+  supply-rover-1:
+    build:
+      context: .
+      dockerfile: emergency-vehicle/Dockerfile
+    container_name: supply-rover-1
+    environment:
+      VEHICLE_ID: supply-rover-1
+      VEHICLE_ROLE: supply_rover
+      RPC_PORT: 50054
+    depends_on:
+      - control-center
 
   water-sensor:
     build: ./water-sensor
