@@ -1,0 +1,1702 @@
+<html>
+<head>
+
+    <title>Storm Flood Dashboard</title>
+
+    <style>
+
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        td {
+            width: 30px;
+            height: 30px;
+            text-align: center;
+            border: 1px solid #999;
+            font-size: 10px;
+        }
+
+        .land {
+            background: #8ad66d;
+        }
+
+        .water {
+            background: #5db5ff;
+        }
+
+        .incident {
+            background: red !important;
+            color: white;
+        }
+
+        .infra {
+            border: 3px solid black;
+        }
+
+        pre {
+            background: white;
+            padding: 10px;
+        }
+
+    </style>
+
+    <meta http-equiv="refresh" content="5">
+
+</head>
+
+<body>
+
+<h1>Storm Flood Dashboard</h1>
+
+<h2>Status</h2>
+
+<ul>
+    <li>Units: 0</li>
+    <li>Sensors: 0</li>
+    <li>Incidents: 0</li>
+</ul>
+
+<h2>Island Map</h2>
+
+<table>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land infra">
+            C
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land infra">
+            H
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land infra">
+            B
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land infra">
+            D
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+    </tr>
+    <tr>
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="land">
+            .
+        </td>
+
+        <td class="water">
+            ~
+        </td>
+    </tr>
+</table>
+
+<h2>Units</h2>
+<pre>[]</pre>
+
+<h2>Sensors</h2>
+<pre>[]</pre>
+
+<h2>Incidents</h2>
+<pre>[]</pre>
+
+</body>
+</html>
+    

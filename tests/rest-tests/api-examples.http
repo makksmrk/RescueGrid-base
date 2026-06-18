@@ -200,5 +200,5 @@ POST {{baseUrl}}/incident
 Content-Type: application/json
 
 {
-  "type": "person_detected",
+  "type": "person_detected"
 }
