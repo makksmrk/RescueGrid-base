@@ -253,6 +253,13 @@ Alle dokumentierten Tests wurden erfolgreich abgeschlossen. Die Anforderungen au
 
 # Aufgabe 2 - Einsatzvergabe über RPC
 
+## Allgemeine Angaben
+
+- **Aufgabe:** Einsatzvergabe via Remote Procedure Call (RPC)
+- **Testdatum:** 17.06.2026
+- **Basis-URL:** `http://localhost:8080`
+- **Start des Systems:** `docker compose up --build -d`
+
 ## Test 4 - RPC und Fahrzeugverhalten
 
 **Aufgabe / Meilenstein:** Aufgabe 2
