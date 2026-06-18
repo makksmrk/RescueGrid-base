@@ -319,3 +319,88 @@ ALL RPC TESTS PASSED
 ```
 
 **Bewertung:** PASS
+
+---
+
+# Aufgabe 3 - Ereignisse und Telemetrie über MQTT
+
+## Allgemeine Angaben
+
+- **Aufgabe:** Ereignisse und Telemetrie über Message-oriented Middleware (MQTT)
+- **Testdatum:** 18.06.2026
+- **MQTT-Broker:** `mqtt://localhost:1883`
+- **Basis-URL:** `http://localhost:8080`
+- **Start des Systems:** `docker compose up --build -d`
+
+## Test 6 - MQTT-Ereignisverarbeitung
+
+**Aufgabe / Meilenstein:** Aufgabe 3
+
+**Testtyp:** Funktional, automatisiert
+
+**Titel:** Prüfung von Ereignissen, Telemetrie und Ausfallszenarien
+
+**Ziel:** Prüfung der MQTT-Kommunikation, Ereignisfilterung, Fahrzeugtelemetrie, Gefahrenreaktion sowie Publisher- und Broker-Neustart.
+
+**Vorbedingungen / Setup:** Der MQTT-Broker, die Leitstelle, Sensoren und Fahrzeuge laufen über Docker Compose. Die Ports `1883` und `8080` sind erreichbar.
+
+**Durchführung:**
+
+```powershell
+npm run test:mqtt
+```
+
+Der Test prüft:
+
+- Erzeugung von Vorfällen aus Schwellwertüberschreitungen
+- Ignorieren von Duplikaten und alten Nachrichten
+- Zusammenführen gleicher Ereignisse an derselben Position
+- Übernahme von Fahrzeugposition und Fortschritt
+- Autonome Gefahrenreaktion eines Bodenfahrzeugs
+- Ausfall und Neustart eines Publishers
+- Neustart des MQTT-Brokers und Wiederverbindung der Clients
+- Verfügbarkeit von `GET /status` und `GET /map`
+
+**Erwartetes Ergebnis:** Gültige Ereignisse und Telemetriedaten werden verarbeitet. Duplikate und alte Nachrichten werden ignoriert. Fahrzeuge reagieren auf Gefahren. Nach Publisher- und Broker-Neustart wird die MQTT-Verbindung wiederhergestellt.
+
+**Tatsächliches Ergebnis:** Alle Ereignisse wurden korrekt verarbeitet. Filterung, Zusammenführung, Telemetrie und Gefahrenreaktion funktionierten. Der Publisher-Ausfall wurde über MQTT Last Will erkannt. Nach dem Broker-Neustart verbanden sich die Clients erneut.
+
+```text
+PASS: Broker, GET /status and GET /map are available
+PASS: Sensor values create incidents only when the event threshold is exceeded
+PASS: Duplicate messages are ignored
+PASS: Messages older than 60 seconds are ignored
+PASS: Repeated events at the same position are merged
+PASS: Vehicle position and progress are updated from MQTT telemetry
+PASS: Ground vehicle autonomously adjusts its route for flood hazards
+PASS: Publisher failure and restart are detected
+PASS: Broker restart is tolerated and clients reconnect
+```
+
+**Bewertung:** PASS
+
+## Test 7 - MQTT-Lasttest
+
+**Aufgabe / Meilenstein:** Aufgabe 3
+
+**Testtyp:** Nicht-funktional, automatisiert
+
+**Titel:** Verarbeitung von 50 MQTT-Nachrichten mit QoS 1
+
+**Ziel:** Prüfung, ob die Leitstelle 50 MQTT-Nachrichten zuverlässig und innerhalb von `10 Sekunden` verarbeitet.
+
+**Vorbedingungen / Setup:** Der MQTT-Broker und die Leitstelle laufen. Der Testclient ist mit dem Broker verbunden.
+
+**Durchführung:** Der Befehl aus Test 6 veröffentlicht zusätzlich 50 Nachrichten mit QoS 1 und prüft den Zähler der verarbeiteten Nachrichten über `GET /status`.
+
+**Erwartetes Ergebnis:** Alle 50 Nachrichten werden innerhalb von `10 Sekunden` verarbeitet.
+
+**Tatsächliches Ergebnis:** Alle 50 Nachrichten wurden innerhalb von `50 ms` verarbeitet.
+
+```text
+PASS: 50 QoS-1 messages processed in 50 ms
+
+ALL MQTT TESTS PASSED
+```
+
+**Bewertung:** PASS
