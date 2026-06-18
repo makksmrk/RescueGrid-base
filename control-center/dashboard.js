@@ -6,6 +6,7 @@ function generateDashboard(state) {
         sensors,
         incidents,
         missions,
+        mqttState,
         width,
         height
     } = state;
@@ -75,6 +76,8 @@ function generateDashboard(state) {
             <li>Sensors: ${sensors.length}</li>
             <li>Incidents: ${incidents.length}</li>
             <li>Missions: ${missions.length}</li>
+            <li>MQTT: ${mqttState.connected ? "connected" : "disconnected"}</li>
+            <li>MQTT messages: ${mqttState.processedMessages}</li>
         </ul>
 
         <h2>Island Map</h2>
@@ -89,6 +92,7 @@ function generateDashboard(state) {
         for (let x = 0; x < width; x++) {
 
             const cell = map[y][x];
+            const hasOpenIncident = cell.incidents.some(incident => incident.status !== "RESOLVED");
 
             let className = cell.type;
 
@@ -96,7 +100,7 @@ function generateDashboard(state) {
                 className += " infra";
             }
 
-            if (cell.incidents.length > 0) {
+            if (hasOpenIncident) {
                 className += " incident";
             }
 
@@ -128,7 +132,7 @@ function generateDashboard(state) {
                 }
             }
 
-            if (cell.incidents.length > 0) {
+            if (hasOpenIncident) {
                 symbol = "!";
             }
 

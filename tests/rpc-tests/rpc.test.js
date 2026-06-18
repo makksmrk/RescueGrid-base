@@ -52,7 +52,8 @@ async function getDashboardState() {
     assert.strictEqual(response.statusCode, 200);
     return {
         missions: readDashboardSection(response.body, "Missions"),
-        units: readDashboardSection(response.body, "Units")
+        units: readDashboardSection(response.body, "Units"),
+        incidents: readDashboardSection(response.body, "Incidents")
     };
 }
 
@@ -80,6 +81,11 @@ async function observeMission(missionId, behaviorText) {
                 const unit = state.units.find(item => item.id === mission.vehicleId);
                 assert(unit, "Assigned vehicle not found");
                 assert.strictEqual(unit.status, "IDLE");
+
+                const incident = state.incidents.find(item => item.id === mission.incidentId);
+                assert(incident, "Related incident not found");
+                assert.strictEqual(incident.status, "RESOLVED");
+                assert(incident.resolvedAt, "Resolved timestamp is missing");
                 return mission;
             }
         }

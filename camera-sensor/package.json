@@ -1,4 +1,8 @@
 {
   "name": "camera-sensor",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "mqtt": "^5.10.4"
+  }
 }

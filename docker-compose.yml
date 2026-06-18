@@ -1,5 +1,18 @@
 services:
 
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ready"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
   control-center:
     build:
       context: .
@@ -9,6 +22,11 @@ services:
     ports:
       - "8080:8080"
       - "50051:50051"
+    environment:
+      MQTT_URL: mqtt://mqtt-broker:1883
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
 
   drone-1:
     build:
@@ -19,8 +37,12 @@ services:
       VEHICLE_ID: drone-1
       VEHICLE_ROLE: drone
       RPC_PORT: 50052
+      MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
-      - control-center
+      control-center:
+        condition: service_started
+      mqtt-broker:
+        condition: service_healthy
 
   repair-rover-1:
     build:
@@ -31,8 +53,12 @@ services:
       VEHICLE_ID: repair-rover-1
       VEHICLE_ROLE: repair_rover
       RPC_PORT: 50053
+      MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
-      - control-center
+      control-center:
+        condition: service_started
+      mqtt-broker:
+        condition: service_healthy
 
   supply-rover-1:
     build:
@@ -43,19 +69,31 @@ services:
       VEHICLE_ID: supply-rover-1
       VEHICLE_ROLE: supply_rover
       RPC_PORT: 50054
+      MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
-      - control-center
+      control-center:
+        condition: service_started
+      mqtt-broker:
+        condition: service_healthy
 
   water-sensor:
     build: ./water-sensor
     container_name: water-sensor
-
+    environment:
+      MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
-      - control-center
+      control-center:
+        condition: service_started
+      mqtt-broker:
+        condition: service_healthy
 
   camera-sensor:
     build: ./camera-sensor
     container_name: camera-sensor
-
+    environment:
+      MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
-      - control-center
+      control-center:
+        condition: service_started
+      mqtt-broker:
+        condition: service_healthy
