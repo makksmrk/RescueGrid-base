@@ -1,6 +1,8 @@
 const { randomUUID } = require("crypto");
 const mqtt = require("mqtt");
 
+const MAX_PROCESSED_HAZARDS = 100;
+
 function createVehicleMqtt({ config, state }) {
     const processedHazards = new Set();
     const telemetryTopic = `island/telemetry/${config.vehicleId}`;
@@ -49,6 +51,14 @@ function createVehicleMqtt({ config, state }) {
         client.publish(telemetryTopic, JSON.stringify(telemetry), { qos: 1 }, error => {
             if (error) console.error("Telemetry publish failed:", error.message);
         });
+    }
+
+    function publishStatus(status, done) {
+        client.publish(statusTopic, JSON.stringify({
+            componentId: config.vehicleId,
+            status,
+            timestamp: new Date().toISOString()
+        }), { qos: 1, retain: true }, done);
     }
 
     function tickClock(remoteClock = 0) {
@@ -210,7 +220,7 @@ function createVehicleMqtt({ config, state }) {
         ) return;
 
         processedHazards.add(payload.messageId);
-        if (processedHazards.size > 100) {
+        if (processedHazards.size > MAX_PROCESSED_HAZARDS) {
             processedHazards.delete(processedHazards.values().next().value);
         }
         publishTelemetry(`${config.vehicleId} passt die Route wegen Hochwasser an`, {
@@ -226,11 +236,7 @@ function createVehicleMqtt({ config, state }) {
 
     client.on("connect", () => {
         console.log(`${config.vehicleId} connected to MQTT`);
-        client.publish(statusTopic, JSON.stringify({
-            componentId: config.vehicleId,
-            status: "online",
-            timestamp: new Date().toISOString()
-        }), { qos: 1, retain: true });
+        publishStatus("online");
         client.subscribe(["island/events/+/+", coordinationTopic], { qos: 1 }, error => {
             if (error) console.error("MQTT subscription failed:", error.message);
         });
@@ -265,11 +271,7 @@ function createVehicleMqtt({ config, state }) {
         clearInterval(telemetryInterval);
         clearInterval(chargingInterval);
         clearTimeout(chargingTimeout);
-        client.publish(statusTopic, JSON.stringify({
-            componentId: config.vehicleId,
-            status: "offline",
-            timestamp: new Date().toISOString()
-        }), { qos: 1, retain: true }, () => client.end());
+        publishStatus("offline", () => client.end());
     }
 
     return { publishTelemetry, stop };

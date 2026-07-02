@@ -19,6 +19,21 @@ const client = mqtt.connect(mqttUrl, {
     }
 });
 
+function getEventType(waterLevel) {
+    if (waterLevel > 105) return "bridge_damage";
+    if (waterLevel > 80) return "water_level_alert";
+    if (waterLevel < 10) return "material_request";
+    return "water_level_reading";
+}
+
+function publishStatus(status, done) {
+    client.publish(statusTopic, JSON.stringify({
+        componentId: sensorId,
+        status,
+        timestamp: new Date().toISOString()
+    }), { qos: 1, retain: true }, done);
+}
+
 function registerSensor() {
     const data = JSON.stringify({
         id: sensorId,
@@ -49,17 +64,13 @@ function registerSensor() {
 
 function publishMeasurement() {
     const waterLevel = Math.floor(Math.random() * 120);
-    let eventType = "water_level_reading";
-    if (waterLevel > 105) eventType = "bridge_damage";
-    else if (waterLevel > 80) eventType = "water_level_alert";
-    else if (waterLevel < 10) eventType = "material_request";
 
     const event = {
         messageId: randomUUID(),
         timestamp: new Date().toISOString(),
         sourceId: sensorId,
         sourceType: "water-sensor",
-        eventType,
+        eventType: getEventType(waterLevel),
         x: Math.floor(Math.random() * 20),
         y: Math.floor(Math.random() * 20),
         measurement: {
@@ -81,11 +92,7 @@ function publishMeasurement() {
 
 client.on("connect", () => {
     console.log(`${sensorId} connected to MQTT`);
-    client.publish(statusTopic, JSON.stringify({
-        componentId: sensorId,
-        status: "online",
-        timestamp: new Date().toISOString()
-    }), { qos: 1, retain: true });
+    publishStatus("online");
 
     registerSensor();
     if (!measurementInterval) {
@@ -98,9 +105,5 @@ client.on("error", error => console.error("MQTT error:", error.message));
 
 process.on("SIGTERM", () => {
     clearInterval(measurementInterval);
-    client.publish(statusTopic, JSON.stringify({
-        componentId: sensorId,
-        status: "offline",
-        timestamp: new Date().toISOString()
-    }), { qos: 1, retain: true }, () => client.end());
+    publishStatus("offline", () => client.end());
 });

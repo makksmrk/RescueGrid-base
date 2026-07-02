@@ -19,6 +19,21 @@ const client = mqtt.connect(mqttUrl, {
     }
 });
 
+function getEventType(confidence) {
+    if (confidence > 0.95) return "structure_damage";
+    if (confidence > 0.8) return "person_detected";
+    if (confidence < 0.05) return "supply_low";
+    return "camera_observation";
+}
+
+function publishStatus(status, done) {
+    client.publish(statusTopic, JSON.stringify({
+        componentId: sensorId,
+        status,
+        timestamp: new Date().toISOString()
+    }), { qos: 1, retain: true }, done);
+}
+
 function registerSensor() {
     const data = JSON.stringify({
         id: sensorId,
@@ -49,17 +64,13 @@ function registerSensor() {
 
 function publishMeasurement() {
     const confidence = Number(Math.random().toFixed(3));
-    let eventType = "camera_observation";
-    if (confidence > 0.95) eventType = "structure_damage";
-    else if (confidence > 0.8) eventType = "person_detected";
-    else if (confidence < 0.05) eventType = "supply_low";
 
     const event = {
         messageId: randomUUID(),
         timestamp: new Date().toISOString(),
         sourceId: sensorId,
         sourceType: "camera",
-        eventType,
+        eventType: getEventType(confidence),
         x: Math.floor(Math.random() * 20),
         y: Math.floor(Math.random() * 20),
         measurement: {
@@ -80,11 +91,7 @@ function publishMeasurement() {
 
 client.on("connect", () => {
     console.log(`${sensorId} connected to MQTT`);
-    client.publish(statusTopic, JSON.stringify({
-        componentId: sensorId,
-        status: "online",
-        timestamp: new Date().toISOString()
-    }), { qos: 1, retain: true });
+    publishStatus("online");
 
     registerSensor();
     if (!measurementInterval) {
@@ -97,9 +104,5 @@ client.on("error", error => console.error("MQTT error:", error.message));
 
 process.on("SIGTERM", () => {
     clearInterval(measurementInterval);
-    client.publish(statusTopic, JSON.stringify({
-        componentId: sensorId,
-        status: "offline",
-        timestamp: new Date().toISOString()
-    }), { qos: 1, retain: true }, () => client.end());
+    publishStatus("offline", () => client.end());
 });

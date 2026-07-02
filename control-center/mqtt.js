@@ -1,5 +1,8 @@
 const mqtt = require("mqtt");
 
+const MESSAGE_TTL_MS = 300_000;
+const MAX_COORDINATION_MESSAGES = 100;
+
 function startMqtt({ mqttUrl, state, missions }) {
     const processedMessageIds = new Map();
     const componentConnections = new Map();
@@ -22,11 +25,16 @@ function startMqtt({ mqttUrl, state, missions }) {
 
         processedMessageIds.set(payload.messageId, Date.now());
         for (const [messageId, receivedAt] of processedMessageIds) {
-            if (Date.now() - receivedAt > 300_000) processedMessageIds.delete(messageId);
+            if (Date.now() - receivedAt > MESSAGE_TTL_MS) processedMessageIds.delete(messageId);
         }
         state.mqttState.processedMessages++;
         state.mqttState.lastMessageAt = new Date().toISOString();
         return true;
+    }
+
+    function findComponent(componentId) {
+        return state.units.find(item => item.id === componentId) ||
+            state.sensors.find(item => item.id === componentId);
     }
 
     function addConnectionState(component) {
@@ -110,8 +118,7 @@ function startMqtt({ mqttUrl, state, missions }) {
         };
         componentConnections.set(payload.componentId, connection);
 
-        const component = state.units.find(item => item.id === payload.componentId) ||
-            state.sensors.find(item => item.id === payload.componentId);
+        const component = findComponent(payload.componentId);
         if (component) Object.assign(component, {
             connectionStatus: connection.status,
             connectionUpdatedAt: connection.timestamp
@@ -127,7 +134,9 @@ function startMqtt({ mqttUrl, state, missions }) {
             logicalTime: payload.logicalTime,
             timestamp: payload.timestamp
         });
-        if (state.coordination.messages.length > 100) state.coordination.messages.shift();
+        if (state.coordination.messages.length > MAX_COORDINATION_MESSAGES) {
+            state.coordination.messages.shift();
+        }
     }
 
     function sortPendingRequests() {
@@ -170,31 +179,29 @@ function startMqtt({ mqttUrl, state, missions }) {
             unit.logicalClock = payload.logicalTime;
         }
 
-        if (payload.type === "REQUEST") {
-            upsertPendingRequest(payload);
-            return;
-        }
-
-        if (payload.type === "ENTER") {
-            removePendingRequest(payload);
-            state.coordination.currentUser = payload.vehicleId;
-            state.coordination.currentRequestId = payload.requestId;
-            state.coordination.currentOrder = {
-                logicalTime: payload.requestLogicalTime || payload.logicalTime,
-                vehicleId: payload.vehicleId
-            };
-            state.coordination.enteredAt = payload.timestamp;
-            return;
-        }
-
-        if (payload.type === "LEAVE") {
-            if (state.coordination.currentRequestId === payload.requestId) {
-                state.coordination.currentUser = null;
-                state.coordination.currentRequestId = null;
-                state.coordination.currentOrder = null;
-                state.coordination.leftAt = payload.timestamp;
-            }
-            state.coordination.completedAccesses++;
+        switch (payload.type) {
+            case "REQUEST":
+                upsertPendingRequest(payload);
+                break;
+            case "ENTER":
+                removePendingRequest(payload);
+                state.coordination.currentUser = payload.vehicleId;
+                state.coordination.currentRequestId = payload.requestId;
+                state.coordination.currentOrder = {
+                    logicalTime: payload.requestLogicalTime || payload.logicalTime,
+                    vehicleId: payload.vehicleId
+                };
+                state.coordination.enteredAt = payload.timestamp;
+                break;
+            case "LEAVE":
+                if (state.coordination.currentRequestId === payload.requestId) {
+                    state.coordination.currentUser = null;
+                    state.coordination.currentRequestId = null;
+                    state.coordination.currentOrder = null;
+                    state.coordination.leftAt = payload.timestamp;
+                }
+                state.coordination.completedAccesses++;
+                break;
         }
     }
 

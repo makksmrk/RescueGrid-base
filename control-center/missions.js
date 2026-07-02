@@ -1,6 +1,22 @@
 const grpc = require("@grpc/grpc-js");
 
+const MISSION_RULES = {
+    person_detected: { missionType: "aerial_inspection", role: "drone", priority: 10 },
+    water_level_alert: { missionType: "aerial_inspection", role: "drone", priority: 8 },
+    blocked_route: { missionType: "repair_route", role: "repair_rover", priority: 7 },
+    structure_damage: { missionType: "repair_route", role: "repair_rover", priority: 7 },
+    bridge_damage: { missionType: "repair_route", role: "repair_rover", priority: 7 },
+    supply_low: { missionType: "deliver_supplies", role: "supply_rover", priority: 6 },
+    material_request: { missionType: "deliver_supplies", role: "supply_rover", priority: 6 }
+};
+
+const HARD_TO_REACH_RULE = { missionType: "aerial_inspection", role: "drone", priority: 8 };
+
 function createMissionService({ state, islandMap, width, height, missionProto }) {
+    function now() {
+        return new Date().toISOString();
+    }
+
     function getCell(x, y) {
         if (x < 0 || y < 0 || x >= width || y >= height) return null;
         return islandMap[y][x];
@@ -29,27 +45,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
     }
 
     function getMissionType(incident) {
-        if (
-            incident.type === "person_detected" ||
-            incident.type === "water_level_alert" ||
-            incident.hardToReach === true
-        ) {
-            return {
-                missionType: "aerial_inspection",
-                role: "drone",
-                priority: incident.type === "person_detected" ? 10 : 8
-            };
-        }
-
-        if (["blocked_route", "structure_damage", "bridge_damage"].includes(incident.type)) {
-            return { missionType: "repair_route", role: "repair_rover", priority: 7 };
-        }
-
-        if (["supply_low", "material_request"].includes(incident.type)) {
-            return { missionType: "deliver_supplies", role: "supply_rover", priority: 6 };
-        }
-
-        return null;
+        return MISSION_RULES[incident.type] || (incident.hardToReach ? HARD_TO_REACH_RULE : null);
     }
 
     function assignMissionForIncident(incident) {
@@ -57,6 +53,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         if (!assignment) return null;
 
         const unit = findIdleUnit(assignment.role);
+        const createdAt = now();
 
         const mission = {
             id: `mission-${Date.now()}-${state.missions.length + 1}`,
@@ -69,8 +66,8 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             status: unit ? "ASSIGNED" : "WAITING",
             progress: 0,
             message: unit ? "Mission assigned via gRPC" : "Waiting for suitable vehicle",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            createdAt,
+            updatedAt: createdAt
         };
 
         state.missions.push(mission);
@@ -91,7 +88,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         mission.vehicleId = unit.id;
         mission.status = "ASSIGNED";
         mission.message = "Mission assigned via gRPC";
-        mission.updatedAt = new Date().toISOString();
+        mission.updatedAt = now();
         unit.status = "ASSIGNED";
         unit.currentMissionId = mission.id;
 
@@ -107,7 +104,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             target: mission.target,
             priority: mission.priority
         }, (error, response) => {
-            mission.updatedAt = new Date().toISOString();
+            mission.updatedAt = now();
             if (error || !response.accepted) {
                 mission.status = "ERROR";
                 mission.message = error ? error.message : response.message;
@@ -141,13 +138,13 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             mission.status = report.status;
             mission.progress = report.progress;
             mission.message = report.message;
-            mission.updatedAt = new Date().toISOString();
+            mission.updatedAt = now();
 
             if (report.status === "IDLE" && report.progress === 100) {
                 const incident = state.incidents.find(item => item.id === mission.incidentId);
                 if (incident) {
                     incident.status = "RESOLVED";
-                    incident.resolvedAt = new Date().toISOString();
+                    incident.resolvedAt = now();
                 }
             }
         }

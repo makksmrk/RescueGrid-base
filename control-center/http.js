@@ -12,15 +12,16 @@ function sendResponse(socket, statusCode, statusText, contentType, body) {
     );
 }
 
+function sendJson(socket, statusCode, statusText, data) {
+    sendResponse(socket, statusCode, statusText, "application/json", JSON.stringify(data, null, 2));
+}
+
 function startHttpServer({ port, state, islandMap, width, height, missions }) {
     const server = net.createServer(socket => {
         socket.on("data", data => {
             try {
                 const requestText = data.toString();
-                console.log(requestText);
-                const request = parseRequest(requestText);
-                const method = request.method;
-                const path = request.path;
+                const { method, path, body } = parseRequest(requestText);
 
                 if (method === "GET" && path === "/") {
                     const html = generateDashboard({
@@ -39,7 +40,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 }
 
                 if (method === "GET" && path === "/status") {
-                    const body = JSON.stringify({
+                    sendJson(socket, 200, "OK", {
                         status: "running",
                         units: state.units.length,
                         sensors: state.sensors.length,
@@ -50,46 +51,45 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                         ).length,
                         mqtt: state.mqttState,
                         coordination: state.coordination
-                    }, null, 2);
-                    sendResponse(socket, 200, "OK", "application/json", body);
+                    });
                     return;
                 }
 
                 if (method === "GET" && path === "/map") {
-                    sendResponse(socket, 200, "OK", "application/json", JSON.stringify(islandMap, null, 2));
+                    sendJson(socket, 200, "OK", islandMap);
                     return;
                 }
 
                 if (method === "POST" && path === "/unit") {
-                    const unit = JSON.parse(request.body);
+                    const unit = JSON.parse(body);
                     unit.registeredAt = new Date().toISOString();
                     unit.status = unit.status || "IDLE";
                     const registeredUnit = missions.upsertUnit(unit);
-                    sendResponse(socket, 201, "Created", "application/json", JSON.stringify({
+                    sendJson(socket, 201, "Created", {
                         message: "Unit registered",
                         unit: registeredUnit
-                    }, null, 2));
+                    });
                     return;
                 }
 
                 if (method === "POST" && path === "/sensor") {
-                    const sensor = JSON.parse(request.body);
+                    const sensor = JSON.parse(body);
                     sensor.registeredAt = new Date().toISOString();
                     const registeredSensor = missions.upsertSensor(sensor);
-                    sendResponse(socket, 201, "Created", "application/json", JSON.stringify({
+                    sendJson(socket, 201, "Created", {
                         message: "Sensor registered",
                         sensor: registeredSensor
-                    }, null, 2));
+                    });
                     return;
                 }
 
                 if (method === "POST" && path === "/incident") {
-                    const result = missions.createIncident(JSON.parse(request.body));
-                    sendResponse(socket, 201, "Created", "application/json", JSON.stringify({
+                    const result = missions.createIncident(JSON.parse(body));
+                    sendJson(socket, 201, "Created", {
                         message: "Incident created",
                         incident: result.incident,
                         mission: result.mission
-                    }, null, 2));
+                    });
                     return;
                 }
 
