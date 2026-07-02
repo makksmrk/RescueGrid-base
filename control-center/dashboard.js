@@ -7,6 +7,7 @@ function generateDashboard(state) {
         incidents,
         missions,
         mqttState,
+        coordination,
         width,
         height
     } = state;
@@ -50,6 +51,11 @@ function generateDashboard(state) {
                 color: white;
             }
 
+            .charging-active {
+                background: #ffd966 !important;
+                color: black;
+            }
+
             .infra {
                 border: 3px solid black;
             }
@@ -78,6 +84,7 @@ function generateDashboard(state) {
             <li>Missions: ${missions.length}</li>
             <li>MQTT: ${mqttState.connected ? "connected" : "disconnected"}</li>
             <li>MQTT messages: ${mqttState.processedMessages}</li>
+            <li>Charging station: ${coordination.currentUser || "free"}</li>
         </ul>
 
         <h2>Island Map</h2>
@@ -98,6 +105,14 @@ function generateDashboard(state) {
 
             if (cell.infrastructure) {
                 className += " infra";
+            }
+
+            if (
+                cell.infrastructure &&
+                cell.infrastructure.type === "charging_station" &&
+                coordination.currentUser
+            ) {
+                className += " charging-active";
             }
 
             if (hasOpenIncident) {
@@ -148,6 +163,9 @@ function generateDashboard(state) {
 
     html += `
         </table>
+
+        <h2>Charging Coordination</h2>
+        <pre>${JSON.stringify(coordination, null, 2)}</pre>
 
         <h2>Units</h2>
         <pre>${JSON.stringify(units, null, 2)}</pre>

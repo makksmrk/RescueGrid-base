@@ -30,6 +30,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                         incidents: state.incidents,
                         missions: state.missions,
                         mqttState: state.mqttState,
+                        coordination: state.coordination,
                         width,
                         height
                     });
@@ -47,7 +48,8 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                         activeMissions: state.missions.filter(
                             mission => mission.status !== "IDLE" && mission.status !== "ERROR"
                         ).length,
-                        mqtt: state.mqttState
+                        mqtt: state.mqttState,
+                        coordination: state.coordination
                     }, null, 2);
                     sendResponse(socket, 200, "OK", "application/json", body);
                     return;

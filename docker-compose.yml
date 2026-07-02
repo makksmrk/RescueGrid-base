@@ -38,6 +38,7 @@ services:
       VEHICLE_ROLE: drone
       RPC_PORT: 50052
       MQTT_URL: mqtt://mqtt-broker:1883
+      COORDINATION_PEERS: drone-1,repair-rover-1,supply-rover-1
     depends_on:
       control-center:
         condition: service_started
@@ -54,6 +55,7 @@ services:
       VEHICLE_ROLE: repair_rover
       RPC_PORT: 50053
       MQTT_URL: mqtt://mqtt-broker:1883
+      COORDINATION_PEERS: drone-1,repair-rover-1,supply-rover-1
     depends_on:
       control-center:
         condition: service_started
@@ -70,6 +72,7 @@ services:
       VEHICLE_ROLE: supply_rover
       RPC_PORT: 50054
       MQTT_URL: mqtt://mqtt-broker:1883
+      COORDINATION_PEERS: drone-1,repair-rover-1,supply-rover-1
     depends_on:
       control-center:
         condition: service_started

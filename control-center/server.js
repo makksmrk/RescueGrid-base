@@ -22,6 +22,15 @@ const state = {
         duplicatesIgnored: 0,
         oldMessagesIgnored: 0,
         mergedIncidents: 0
+    },
+    coordination: {
+        resourceId: "charging_station",
+        currentUser: null,
+        currentRequestId: null,
+        currentOrder: null,
+        pendingRequests: [],
+        completedAccesses: 0,
+        messages: []
     }
 };
 

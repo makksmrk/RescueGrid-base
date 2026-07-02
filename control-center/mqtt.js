@@ -3,6 +3,7 @@ const mqtt = require("mqtt");
 function startMqtt({ mqttUrl, state, missions }) {
     const processedMessageIds = new Map();
     const componentConnections = new Map();
+    const coordinationTopic = `island/coordination/${state.coordination.resourceId}`;
 
     function acceptMessage(payload) {
         if (!payload.messageId || !payload.timestamp) {
@@ -82,6 +83,7 @@ function startMqtt({ mqttUrl, state, missions }) {
             status: payload.status,
             position: payload.position,
             progress: payload.progress,
+            charging: payload.charging || payload.resourceUse,
             currentMissionId: payload.status === "IDLE" ? null : payload.missionId,
             lastTelemetryAt: payload.timestamp,
             lastMessage: payload.message
@@ -119,11 +121,91 @@ function startMqtt({ mqttUrl, state, missions }) {
         });
     }
 
+    function rememberCoordinationMessage(payload) {
+        state.coordination.messages.push({
+            type: payload.type,
+            vehicleId: payload.vehicleId,
+            toVehicleId: payload.toVehicleId,
+            requestId: payload.requestId,
+            logicalTime: payload.logicalTime,
+            timestamp: payload.timestamp
+        });
+        if (state.coordination.messages.length > 100) state.coordination.messages.shift();
+    }
+
+    function sortPendingRequests() {
+        state.coordination.pendingRequests.sort((left, right) => {
+            if (left.logicalTime !== right.logicalTime) return left.logicalTime - right.logicalTime;
+            return left.vehicleId.localeCompare(right.vehicleId);
+        });
+    }
+
+    function upsertPendingRequest(payload) {
+        const existing = state.coordination.pendingRequests.find(request =>
+            request.vehicleId === payload.vehicleId && request.requestId === payload.requestId
+        );
+        const request = {
+            vehicleId: payload.vehicleId,
+            requestId: payload.requestId,
+            logicalTime: Number(payload.logicalTime) || 0,
+            requestedAt: payload.timestamp
+        };
+
+        if (existing) Object.assign(existing, request);
+        else state.coordination.pendingRequests.push(request);
+
+        sortPendingRequests();
+    }
+
+    function removePendingRequest(payload) {
+        state.coordination.pendingRequests = state.coordination.pendingRequests.filter(request =>
+            request.requestId !== payload.requestId
+        );
+    }
+
+    function handleCoordinationMessage(payload) {
+        if (!acceptMessage(payload)) return;
+        rememberCoordinationMessage(payload);
+
+        const unit = state.units.find(item => item.id === payload.vehicleId);
+        if (unit) {
+            unit.lastCoordinationEvent = payload.type;
+            unit.logicalClock = payload.logicalTime;
+        }
+
+        if (payload.type === "REQUEST") {
+            upsertPendingRequest(payload);
+            return;
+        }
+
+        if (payload.type === "ENTER") {
+            removePendingRequest(payload);
+            state.coordination.currentUser = payload.vehicleId;
+            state.coordination.currentRequestId = payload.requestId;
+            state.coordination.currentOrder = {
+                logicalTime: payload.requestLogicalTime || payload.logicalTime,
+                vehicleId: payload.vehicleId
+            };
+            state.coordination.enteredAt = payload.timestamp;
+            return;
+        }
+
+        if (payload.type === "LEAVE") {
+            if (state.coordination.currentRequestId === payload.requestId) {
+                state.coordination.currentUser = null;
+                state.coordination.currentRequestId = null;
+                state.coordination.currentOrder = null;
+                state.coordination.leftAt = payload.timestamp;
+            }
+            state.coordination.completedAccesses++;
+        }
+    }
+
     const client = mqtt.connect(mqttUrl, { clientId: "control-center", clean: true });
     client.on("connect", () => {
         state.mqttState.connected = true;
         console.log(`Control center connected to MQTT at ${mqttUrl}`);
-        client.subscribe(["island/events/+/+", "island/telemetry/+", "island/status/+"],
+        client.subscribe(["island/events/+/+", "island/telemetry/+", "island/status/+", coordinationTopic],
             { qos: 1 },
             error => {
                 if (error) console.error("MQTT subscription failed:", error.message);
@@ -138,6 +220,7 @@ function startMqtt({ mqttUrl, state, missions }) {
             if (topic.startsWith("island/events/")) handleSensorEvent(payload);
             else if (topic.startsWith("island/telemetry/")) handleVehicleTelemetry(payload);
             else if (topic.startsWith("island/status/")) handleComponentStatus(payload);
+            else if (topic === coordinationTopic) handleCoordinationMessage(payload);
         } catch (error) {
             console.error(`Invalid MQTT message on ${topic}:`, error.message);
         }

@@ -7,7 +7,13 @@ const state = {
     status: "IDLE",
     missionId: null,
     progress: 0,
-    position: { x: 0, y: 0 }
+    position: { x: 0, y: 0 },
+    charging: {
+        resourceId: config.chargingResourceId,
+        status: "NOT_REQUESTING",
+        logicalTime: 0,
+        requestId: null
+    }
 };
 
 function registerVehicle() {
