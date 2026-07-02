@@ -404,3 +404,80 @@ ALL MQTT TESTS PASSED
 ```
 
 **Bewertung:** PASS
+
+---
+
+# Aufgabe 4 - Verteilte Koordination mit Ricart/Agrawala
+
+## Allgemeine Angaben
+
+- **Aufgabe:** Dezentrale Koordination des Zugriffs auf die Ladestation
+- **Testdatum:** 02.07.2026
+- **MQTT-Broker:** `mqtt://localhost:1883`
+- **Basis-URL:** `http://localhost:8080`
+- **Start des Systems:** `docker compose up --build -d`
+
+## Test 8 - Safety, Liveness und Fehlerbetrachtung
+
+**Aufgabe / Meilenstein:** Aufgabe 4
+
+**Testtyp:** Funktional, automatisiert
+
+**Titel:** Prüfung des Ricart/Agrawala-Ausschlussverfahrens
+
+**Ziel:** Prüfung, ob die Fahrzeuge die Ladestation dezentral koordinieren und die Anforderungen Safety, Liveness und Fehlerbetrachtung erfüllt sind.
+
+**Vorbedingungen / Setup:** Die Leitstelle, der MQTT-Broker und die drei Fahrzeuge `drone-1`, `repair-rover-1` und `supply-rover-1` laufen über Docker Compose.
+
+**Durchführung:**
+
+```powershell
+npm run test:coordination
+```
+
+Der Test beobachtet die Koordinationsnachrichten über `GET /status`. Dabei werden `REQUEST`, `REPLY`, `ENTER` und `LEAVE` sowie die logischen Zeiten ausgewertet. Für die Fehlerbetrachtung wird `supply-rover-1` gestoppt und danach wieder gestartet.
+
+**Erwartetes Ergebnis:**
+
+- Mindestens drei Fahrzeuge nehmen an der Koordination teil.
+- Es befindet sich nie mehr als ein Fahrzeug gleichzeitig in der kritischen Ressource.
+- Ein wartendes Fahrzeug darf nach dem Freigeben der Ladestation weiterarbeiten.
+- Beim Prozessabsturz fehlt ein `REPLY`, wodurch der Fortschritt blockiert wird.
+- Nach dem Neustart läuft die Koordination wieder weiter.
+
+**Tatsächliches Ergebnis:** Alle drei Fahrzeuge nahmen teil. Safety und Liveness wurden erfolgreich beobachtet. Beim Stoppen von `supply-rover-1` wurde der erwartete blockierte Zustand erkannt. Nach dem Neustart lief die Koordination wieder.
+
+```text
+PASS: Coordination system is ready and all three vehicles participate
+PASS: Safety - no two vehicles used the charging station at the same time
+PASS: Liveness - a waiting vehicle entered after another vehicle left
+PASS: Fehlerbetrachtung - process crash blocks progress until the system is restarted
+```
+
+**Bewertung:** PASS
+
+## Test 9 - Koordinationslatenz
+
+**Aufgabe / Meilenstein:** Aufgabe 4
+
+**Testtyp:** Nicht-funktional, automatisiert
+
+**Titel:** Antwortzeit der dezentralen Koordination
+
+**Ziel:** Prüfung, wie lange ein Zugriff von `REQUEST` bis `ENTER` dauert.
+
+**Vorbedingungen / Setup:** Das System läuft über Docker Compose. Die Fahrzeuge koordinieren den Zugriff auf die Ladestation über MQTT.
+
+**Durchführung:** Der Befehl aus Test 8 misst für drei Zugriffe die Zeit zwischen `REQUEST` und `ENTER`.
+
+**Erwartetes Ergebnis:** Die maximale Koordinationslatenz liegt unter `12000 ms`.
+
+**Tatsächliches Ergebnis:** Es wurden drei Zugriffe gemessen. Die durchschnittliche Latenz betrug `3527,3 ms`, die maximale Latenz `6991 ms`.
+
+```text
+PASS: Non-functional latency - 3 accesses, average 3527.3 ms, maximum 6991 ms
+
+ALL COORDINATION TESTS PASSED
+```
+
+**Bewertung:** PASS
