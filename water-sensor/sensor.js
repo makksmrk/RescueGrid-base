@@ -49,13 +49,17 @@ function registerSensor() {
 
 function publishMeasurement() {
     const waterLevel = Math.floor(Math.random() * 120);
-    const isAlert = waterLevel > 80;
+    let eventType = "water_level_reading";
+    if (waterLevel > 105) eventType = "bridge_damage";
+    else if (waterLevel > 80) eventType = "water_level_alert";
+    else if (waterLevel < 10) eventType = "material_request";
+
     const event = {
         messageId: randomUUID(),
         timestamp: new Date().toISOString(),
         sourceId: sensorId,
         sourceType: "water-sensor",
-        eventType: isAlert ? "water_level_alert" : "water_level_reading",
+        eventType,
         x: Math.floor(Math.random() * 20),
         y: Math.floor(Math.random() * 20),
         measurement: {

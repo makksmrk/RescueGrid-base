@@ -49,13 +49,17 @@ function registerSensor() {
 
 function publishMeasurement() {
     const confidence = Number(Math.random().toFixed(3));
-    const personDetected = confidence > 0.8;
+    let eventType = "camera_observation";
+    if (confidence > 0.95) eventType = "structure_damage";
+    else if (confidence > 0.8) eventType = "person_detected";
+    else if (confidence < 0.05) eventType = "supply_low";
+
     const event = {
         messageId: randomUUID(),
         timestamp: new Date().toISOString(),
         sourceId: sensorId,
         sourceType: "camera",
-        eventType: personDetected ? "person_detected" : "camera_observation",
+        eventType,
         x: Math.floor(Math.random() * 20),
         y: Math.floor(Math.random() * 20),
         measurement: {

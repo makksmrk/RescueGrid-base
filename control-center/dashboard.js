@@ -12,11 +12,42 @@ function generateDashboard(state) {
         height
     } = state;
 
+    function getUnitSymbol(unit) {
+        if (unit.role === "drone") return "D";
+        if (unit.role === "repair_rover") return "R";
+        if (unit.role === "supply_rover") return "S";
+        return "U";
+    }
+
+    function isUnitWorking(unit) {
+        return unit.currentMissionId && unit.status === "BUSY";
+    }
+
+    function getUnitMapPosition(unit) {
+        if (
+            (unit.status === "IDLE" && !unit.currentMissionId) ||
+            unit.status === "ASSIGNED"
+        ) {
+            return { x: 0, y: 0 };
+        }
+        return unit.position;
+    }
+
+    const unitsByPosition = new Map();
+    for (const unit of units) {
+        const position = getUnitMapPosition(unit);
+        if (!position) continue;
+        const key = `${position.x},${position.y}`;
+        if (!unitsByPosition.has(key)) unitsByPosition.set(key, []);
+        unitsByPosition.get(key).push(unit);
+    }
+
     let html = `
     <html>
     <head>
 
         <title>Storm Flood Dashboard</title>
+        <meta charset="utf-8">
 
         <style>
 
@@ -36,6 +67,7 @@ function generateDashboard(state) {
                 text-align: center;
                 border: 1px solid #999;
                 font-size: 10px;
+                position: relative;
             }
 
             .land {
@@ -49,6 +81,45 @@ function generateDashboard(state) {
             .incident {
                 background: red !important;
                 color: white;
+                animation: incidentBlink 0.8s infinite alternate;
+            }
+
+            .cell-content {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                min-height: 30px;
+            }
+
+            .unit-marker {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 17px;
+                height: 17px;
+                border-radius: 50%;
+                background: #222;
+                color: white;
+                font-weight: bold;
+                font-size: 10px;
+                line-height: 1;
+            }
+
+            .unit-working {
+                background: #00a676;
+                outline: 2px solid white;
+                animation: pulse 1s infinite alternate;
+            }
+
+            @keyframes pulse {
+                from { transform: scale(1); }
+                to { transform: scale(1.18); }
+            }
+
+            @keyframes incidentBlink {
+                from { background: #ff0000; }
+                to { background: #8b0000; }
             }
 
             .charging-active {
@@ -67,7 +138,7 @@ function generateDashboard(state) {
 
         </style>
 
-        <meta http-equiv="refresh" content="5">
+        <meta http-equiv="refresh" content="1">
 
     </head>
 
@@ -87,6 +158,15 @@ function generateDashboard(state) {
             <li>Charging station: ${coordination.currentUser || "free"}</li>
         </ul>
 
+        <p>
+            <b>Legende:</b>
+            ! = offener Vorfall,
+            D = Drohne,
+            R = Reparatur-Rover,
+            S = Versorgungs-Rover,
+            grün pulsierend = Unit arbeitet.
+        </p>
+
         <h2>Island Map</h2>
 
         <table>
@@ -100,6 +180,7 @@ function generateDashboard(state) {
 
             const cell = map[y][x];
             const hasOpenIncident = cell.incidents.some(incident => incident.status !== "RESOLVED");
+            const cellUnits = unitsByPosition.get(`${x},${y}`) || [];
 
             let className = cell.type;
 
@@ -151,9 +232,18 @@ function generateDashboard(state) {
                 symbol = "!";
             }
 
+            const unitSymbols = cellUnits.map(unit => `
+                <span class="unit-marker ${isUnitWorking(unit) ? "unit-working" : ""}" title="${unit.id}: ${unit.status}, ${unit.progress || 0}%">
+                    ${getUnitSymbol(unit)}
+                </span>
+            `).join("");
+
             html += `
                 <td class="${className}">
-                    ${symbol}
+                    <div class="cell-content">
+                        <span>${symbol}</span>
+                        ${unitSymbols}
+                    </div>
                 </td>
             `;
         }

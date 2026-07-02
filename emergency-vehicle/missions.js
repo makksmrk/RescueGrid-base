@@ -41,24 +41,14 @@ function createMissionExecution({ config, state, publishTelemetry }) {
     function simulateMission(mission) {
         const steps = [
             {
-                delay: 1000,
+                delay: 4000,
                 status: "BUSY",
-                progress: 25,
-                position: {
-                    x: Math.round(mission.target.x / 2),
-                    y: Math.round(mission.target.y / 2)
-                },
-                message: `${config.vehicleId} ist unterwegs`
-            },
-            {
-                delay: 3000,
-                status: "BUSY",
-                progress: 65,
+                progress: 80,
                 position: mission.target,
                 message: `${config.vehicleId} ${config.behavior}`
             },
             {
-                delay: 5000,
+                delay: 9000,
                 status: "IDLE",
                 progress: 100,
                 position: mission.target,

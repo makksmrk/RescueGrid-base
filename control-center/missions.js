@@ -10,9 +10,11 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         const existingUnit = state.units.find(item => item.id === unit.id);
         if (existingUnit) {
             Object.assign(existingUnit, unit);
+            retryWaitingMissions();
             return existingUnit;
         }
         state.units.push(unit);
+        retryWaitingMissions();
         return unit;
     }
 
@@ -54,12 +56,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         const assignment = getMissionType(incident);
         if (!assignment) return null;
 
-        const unit = state.units.find(item =>
-            item.role === assignment.role &&
-            item.status === "IDLE" &&
-            item.rpcHost &&
-            item.rpcPort
-        );
+        const unit = findIdleUnit(assignment.role);
 
         const mission = {
             id: `mission-${Date.now()}-${state.missions.length + 1}`,
@@ -69,16 +66,32 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             priority: assignment.priority,
             requiredRole: assignment.role,
             vehicleId: unit ? unit.id : null,
-            status: unit ? "ASSIGNED" : "ERROR",
+            status: unit ? "ASSIGNED" : "WAITING",
             progress: 0,
-            message: unit ? "Mission assigned via gRPC" : "No suitable idle vehicle available",
+            message: unit ? "Mission assigned via gRPC" : "Waiting for suitable vehicle",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
 
         state.missions.push(mission);
-        if (!unit) return mission;
+        if (unit) dispatchMission(mission, unit);
+        return mission;
+    }
 
+    function findIdleUnit(role) {
+        return state.units.find(item =>
+            item.role === role &&
+            item.status === "IDLE" &&
+            item.rpcHost &&
+            item.rpcPort
+        );
+    }
+
+    function dispatchMission(mission, unit) {
+        mission.vehicleId = unit.id;
+        mission.status = "ASSIGNED";
+        mission.message = "Mission assigned via gRPC";
+        mission.updatedAt = new Date().toISOString();
         unit.status = "ASSIGNED";
         unit.currentMissionId = mission.id;
 
@@ -89,7 +102,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
 
         client.AssignMission({
             missionId: mission.id,
-            incidentId: incident.id,
+            incidentId: mission.incidentId,
             type: mission.type,
             target: mission.target,
             priority: mission.priority
@@ -106,8 +119,17 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             }
             client.close();
         });
+    }
 
-        return mission;
+    function retryWaitingMissions() {
+        const waitingMissions = state.missions
+            .filter(mission => mission.status === "WAITING")
+            .sort((left, right) => right.priority - left.priority || Date.parse(left.createdAt) - Date.parse(right.createdAt));
+
+        for (const mission of waitingMissions) {
+            const unit = findIdleUnit(mission.requiredRole);
+            if (unit) dispatchMission(mission, unit);
+        }
     }
 
     function reportMissionStatus(call, callback) {
@@ -135,6 +157,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             unit.currentMissionId = report.status === "IDLE" ? null : report.missionId;
         }
 
+        retryWaitingMissions();
         callback(null, { received: true });
     }
 

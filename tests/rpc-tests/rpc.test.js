@@ -61,10 +61,11 @@ function sleep(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
-async function observeMission(missionId, behaviorText) {
-    const deadline = Date.now() + 8000;
+async function observeMission(missionId, behaviorText, options = {}) {
+    const deadline = Date.now() + 13000;
     const observedStatuses = new Set(["ASSIGNED"]);
     let behaviorObserved = false;
+    const requireUnitIdle = options.requireUnitIdle !== false;
 
     while (Date.now() < deadline) {
         const state = await getDashboardState();
@@ -80,7 +81,7 @@ async function observeMission(missionId, behaviorText) {
 
                 const unit = state.units.find(item => item.id === mission.vehicleId);
                 assert(unit, "Assigned vehicle not found");
-                assert.strictEqual(unit.status, "IDLE");
+                if (requireUnitIdle) assert.strictEqual(unit.status, "IDLE");
 
                 const incident = state.incidents.find(item => item.id === mission.incidentId);
                 assert(incident, "Related incident not found");
@@ -93,7 +94,7 @@ async function observeMission(missionId, behaviorText) {
         await sleep(200);
     }
 
-    throw new Error(`Mission ${missionId} did not finish within 8 seconds`);
+    throw new Error(`Mission ${missionId} did not finish within 13 seconds`);
 }
 
 async function testRoleAssignment(testCase) {
@@ -120,7 +121,7 @@ function reportMissionStatus(report) {
     });
 }
 
-async function testBusyVehicle() {
+async function testBusyVehicleQueue() {
     const first = await request("POST", "/incident", {
         type: "person_detected", x: 3, y: 3, confidence: 0.95
     });
@@ -133,11 +134,12 @@ async function testBusyVehicle() {
     });
     assert.strictEqual(second.statusCode, 201);
     const secondMission = JSON.parse(second.body).mission;
-    assert.strictEqual(secondMission.status, "ERROR");
+    assert.strictEqual(secondMission.status, "WAITING");
     assert.strictEqual(secondMission.vehicleId, null);
-    assert(secondMission.message.includes("No suitable idle vehicle"));
+    assert(secondMission.message.includes("Waiting for suitable vehicle"));
 
-    await observeMission(firstMission.id, "inspiziert die Zielposition aus der Luft");
+    await observeMission(firstMission.id, "inspiziert die Zielposition aus der Luft", { requireUnitIdle: false });
+    await observeMission(secondMission.id, "inspiziert die Zielposition aus der Luft");
 }
 
 async function testRpcReports() {
@@ -199,8 +201,8 @@ async function main() {
             console.log(`PASS: ${roleCase.role} assignment, behavior and state transitions`);
         }
 
-        await testBusyVehicle();
-        console.log("PASS: busy vehicle causes an ERROR mission");
+        await testBusyVehicleQueue();
+        console.log("PASS: busy vehicle causes a WAITING mission that is assigned later");
 
         const reportAck = await reportMissionStatus({
             missionId: lastCompletedMission.id,

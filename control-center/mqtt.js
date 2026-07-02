@@ -95,9 +95,6 @@ function startMqtt({ mqttUrl, state, missions }) {
         if (payload.missionId) {
             const mission = state.missions.find(item => item.id === payload.missionId);
             if (mission) {
-                mission.status = payload.status;
-                mission.progress = payload.progress;
-                mission.message = payload.message;
                 mission.position = payload.position;
                 mission.updatedAt = payload.timestamp;
                 if (payload.error) mission.error = payload.error;
