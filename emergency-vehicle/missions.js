@@ -66,7 +66,9 @@ function createMissionExecution({ config, state, publishTelemetry }) {
 
     function assignMission(call, callback) {
         const mission = call.request;
-        if (state.status !== "IDLE") {
+        if (state.status !== "IDLE" ||
+            state.charging.status === "WAITING" ||
+            state.charging.status === "USING") {
             callback(null, {
                 accepted: false,
                 vehicleId: config.vehicleId,

@@ -142,19 +142,31 @@ function generateDashboard(state) {
                 padding: 10px;
             }
 
-        </style>
+            details {
+                margin-top: 12px;
+                background: white;
+                border: 1px solid #ccc;
+                padding: 8px 10px;
+            }
 
-        <meta http-equiv="refresh" content="1">
+            summary {
+                cursor: pointer;
+                font-weight: bold;
+            }
+
+        </style>
 
     </head>
 
     <body>
 
         <h1>Storm Flood Dashboard</h1>
+        
+        <h3>Vorsicht: Wenn auf der Seite Text markiert oder Informationsblock offen ist, passiert kein Refresh auf der Seite</h3>
 
         <h2>Status</h2>
 
-        <ul>
+        <ul id="status-list">
             <li>Units: ${units.length}</li>
             <li>Sensors: ${sensors.length}</li>
             <li>Incidents: ${incidents.length}</li>
@@ -169,16 +181,27 @@ function generateDashboard(state) {
 
         <p>
             <b>Legende:</b>
-            ! = offener Vorfall,
-            D = Drohne,
-            R = Reparatur-Rover,
-            S = Versorgungs-Rover,
-            grün pulsierend = Unit arbeitet.
+            <p>
+                C = Ladestation,
+                H = Hafen,
+                D = Depot,
+                B = Brücke,
+            </p>
+            <p>
+                ! = offener Vorfall,
+                D = Drohne,
+                R = Reparatur-Rover,
+                S = Versorgungs-Rover,
+            </p>
+            <p>
+                grün pulsierend = Unit arbeitet,
+                C gelb pulsierend = Unit wird an der Ladestation geladen.
+            </p>
         </p>
 
         <h2>Island Map</h2>
 
-        <table>
+        <table id="island-map">
     `;
 
     for (let y = 0; y < height; y++) {
@@ -263,20 +286,42 @@ function generateDashboard(state) {
     html += `
         </table>
 
-        <h2>Charging Coordination</h2>
-        <pre>${JSON.stringify(coordination, null, 2)}</pre>
+        <details data-section="charging">
+            <summary>Charging Coordination</summary>
+            <pre>${JSON.stringify(coordination, null, 2)}</pre>
+        </details>
 
-        <h2>Units</h2>
-        <pre>${JSON.stringify(units, null, 2)}</pre>
+        <details data-section="units">
+            <summary>Units</summary>
+            <pre>${JSON.stringify(units, null, 2)}</pre>
+        </details>
 
-        <h2>Sensors</h2>
-        <pre>${JSON.stringify(sensors, null, 2)}</pre>
+        <details data-section="sensors">
+            <summary>Sensors</summary>
+            <pre>${JSON.stringify(sensors, null, 2)}</pre>
+        </details>
 
-        <h2>Incidents</h2>
-        <pre>${JSON.stringify(incidents, null, 2)}</pre>
+        <details data-section="incidents">
+            <summary>Incidents</summary>
+            <pre>${JSON.stringify(incidents, null, 2)}</pre>
+        </details>
 
-        <h2>Missions</h2>
-        <pre>${JSON.stringify(missions, null, 2)}</pre>
+        <details data-section="missions">
+            <summary>Missions</summary>
+            <pre>${JSON.stringify(missions, null, 2)}</pre>
+        </details>
+
+        <script>
+
+            setInterval(() => {
+                const hasOpenDetails = document.querySelector("details[open]");
+                const selectedText = window.getSelection().toString();
+
+                if (!hasOpenDetails && !selectedText) {
+                    window.location.reload();
+                }
+            }, 1000);
+        </script>
 
     </body>
     </html>

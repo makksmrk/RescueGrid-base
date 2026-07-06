@@ -113,7 +113,13 @@ function createVehicleMqtt({ config, state }) {
     }
 
     function requestChargingStation() {
-        if (requestingResource || usingResource || peerVehicles.length === 0) return;
+        if (
+            state.status !== "IDLE" ||
+            state.missionId ||
+            requestingResource ||
+            usingResource ||
+            peerVehicles.length === 0
+        ) return;
 
         receivedReplies.clear();
         requestingResource = true;
