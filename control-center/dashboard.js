@@ -19,6 +19,12 @@ function generateDashboard(state) {
         return "U";
     }
 
+    function getChargingStatus(role) {
+        const unit = units.find(item => item.role === role);
+        if (!unit) return "not registered";
+        return unit.charging ? unit.charging.status : "unknown";
+    }
+
     function isUnitWorking(unit) {
         return unit.currentMissionId && unit.status === "BUSY";
     }
@@ -156,6 +162,9 @@ function generateDashboard(state) {
             <li>MQTT: ${mqttState.connected ? "connected" : "disconnected"}</li>
             <li>MQTT messages: ${mqttState.processedMessages}</li>
             <li>Charging station: ${coordination.currentUser || "free"}</li>
+            <li>Drone charging status: ${getChargingStatus("drone")}</li>
+            <li>Repair Rover charging status: ${getChargingStatus("repair_rover")}</li>
+            <li>Supply Rover charging status: ${getChargingStatus("supply_rover")}</li>
         </ul>
 
         <p>
