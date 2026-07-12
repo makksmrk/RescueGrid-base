@@ -189,6 +189,14 @@ Content-Type: application/json
   "y": 1
 }
 
+### Incident mit ID manuell loeschen
+POST {{baseUrl}}/incident/delete
+Content-Type: application/json
+
+{
+  "id": "incident-1783873670797-14"
+}
+
 ### Nicht vorhandener Endpoint -> 404 Not Found
 GET {{baseUrl}}/does-not-exist
 

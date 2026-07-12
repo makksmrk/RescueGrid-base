@@ -203,11 +203,27 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         return { incident, mission, merged: false };
     }
 
+    function deleteIncident(incidentId) {
+        const incident = state.incidents.find(item => item.id === incidentId);
+        if (!incident) return null;
+
+        state.incidents = state.incidents.filter(item => item.id !== incidentId);
+        state.missions = state.missions.filter(item => item.incidentId !== incidentId);
+
+        const cell = getCell(incident.x, incident.y);
+        if (cell) {
+            cell.incidents = cell.incidents.filter(item => item.id !== incidentId);
+        }
+
+        return incident;
+    }
+
     return {
         upsertUnit,
         upsertSensor,
         getMissionType,
         createIncident,
+        deleteIncident,
         reportMissionStatus
     };
 }

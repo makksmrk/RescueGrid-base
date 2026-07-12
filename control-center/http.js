@@ -16,12 +16,34 @@ function sendJson(socket, statusCode, statusText, data) {
     sendResponse(socket, statusCode, statusText, "application/json", JSON.stringify(data, null, 2));
 }
 
+function hasCompleteRequest(requestText) {
+    const headerEnd = requestText.indexOf("\r\n\r\n");
+    if (headerEnd === -1) return false;
+
+    const headerPart = requestText.slice(0, headerEnd);
+    const contentLengthLine = headerPart
+        .split("\r\n")
+        .find(line => line.toLowerCase().startsWith("content-length:"));
+    if (!contentLengthLine) return true;
+
+    const contentLength = Number(contentLengthLine.split(":")[1].trim());
+    const bodyLength = Buffer.byteLength(requestText.slice(headerEnd + 4));
+    return bodyLength >= contentLength;
+}
+
 function startHttpServer({ port, state, islandMap, width, height, missions }) {
     const server = net.createServer(socket => {
+        let requestText = "";
+
         socket.on("data", data => {
+            requestText += data.toString();
+            if (!hasCompleteRequest(requestText)) return;
+
             try {
-                const requestText = data.toString();
-                const { method, path, body } = parseRequest(requestText);
+                const request = parseRequest(requestText);
+                const method = request.method;
+                const path = request.path;
+                const body = request.body;
 
                 if (method === "GET" && path === "/") {
                     const html = generateDashboard({
@@ -89,6 +111,19 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                         message: "Incident created",
                         incident: result.incident,
                         mission: result.mission
+                    });
+                    return;
+                }
+
+                if (method === "POST" && path === "/incident/delete") {
+                    const deletedIncident = missions.deleteIncident(JSON.parse(body).id);
+                    if (!deletedIncident) {
+                        sendResponse(socket, 404, "Not Found", "text/plain", "Incident not found");
+                        return;
+                    }
+                    sendJson(socket, 200, "OK", {
+                        message: "Incident deleted",
+                        incident: deletedIncident
                     });
                     return;
                 }

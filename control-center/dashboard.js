@@ -32,6 +32,18 @@ function generateDashboard(state) {
         return unit.currentMissionId && unit.status === "BUSY";
     }
 
+    function renderIncidentButtons() {
+        const activeIncidents = incidents.filter(incident => incident.status !== "RESOLVED");
+        if (activeIncidents.length === 0) return "<p>No active incidents</p>";
+        return activeIncidents.map(incident => `
+            <li>
+                ${incident.id}:
+                ${incident.type} at (${incident.x}, ${incident.y}) - ${incident.status}
+                <button type="button" onclick="deleteIncident('${incident.id}')">Delete</button>
+            </li>
+        `).join("");
+    }
+
     function getUnitMapPosition(unit) {
         if (
             (unit.status === "IDLE" && !unit.currentMissionId) ||
@@ -157,6 +169,18 @@ function generateDashboard(state) {
                 font-weight: bold;
             }
 
+            .test-controls {
+                margin: 16px 0;
+                padding: 10px;
+                background: white;
+                border: 1px solid #ccc;
+            }
+
+            button {
+                margin: 2px 4px 2px 0;
+                cursor: pointer;
+            }
+
         </style>
 
     </head>
@@ -181,6 +205,13 @@ function generateDashboard(state) {
             <li>Repair Rover: ${getUnitStatus("repair_rover")}</li>
             <li>Supply Rover: ${getUnitStatus("supply_rover")}</li>
         </ul>
+
+        <div class="test-controls">
+            <h2>Active Incidents</h2>
+            <ul>
+                ${renderIncidentButtons()}
+            </ul>
+        </div>
 
         <p>
             <b>Legende:</b>
@@ -315,6 +346,14 @@ function generateDashboard(state) {
         </details>
 
         <script>
+            async function deleteIncident(id) {
+                await fetch("/incident/delete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id })
+                });
+                window.location.reload();
+            }
 
             setInterval(() => {
                 const hasOpenDetails = document.querySelector("details[open]");
