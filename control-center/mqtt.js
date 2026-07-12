@@ -89,6 +89,7 @@ function startMqtt({ mqttUrl, state, missions }) {
             rpcPort: payload.rpcPort,
             capabilities: payload.capabilities,
             status: payload.status,
+            battery: payload.battery,
             position: payload.position,
             progress: payload.progress,
             charging: payload.charging || payload.resourceUse,
@@ -108,7 +109,7 @@ function startMqtt({ mqttUrl, state, missions }) {
                 if (payload.error) mission.error = payload.error;
             }
         }
-        console.log(`Telemetry ${unit.id}: ${unit.status}, ${unit.progress}%`);
+        console.log(`Telemetry ${unit.id}: ${unit.status},work progress: ${unit.progress}%`);
     }
 
     function handleComponentStatus(payload) {

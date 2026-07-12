@@ -19,10 +19,13 @@ function generateDashboard(state) {
         return "U";
     }
 
-    function getChargingStatus(role) {
+    function getUnitStatus(role) {
         const unit = units.find(item => item.role === role);
         if (!unit) return "not registered";
-        return unit.charging ? unit.charging.status : "unknown";
+        const chargingStatus = unit.charging ? unit.charging.status : "unknown";
+        const battery = Number.isFinite(unit.battery) ? `${unit.battery}%` : "unknown battery";
+        const workingStatus = unit.status ? unit.status : "unknown";
+        return `charging status: ${chargingStatus}, battery ${battery}; working status: ${workingStatus}`;
     }
 
     function isUnitWorking(unit) {
@@ -174,9 +177,9 @@ function generateDashboard(state) {
             <li>MQTT: ${mqttState.connected ? "connected" : "disconnected"}</li>
             <li>MQTT messages: ${mqttState.processedMessages}</li>
             <li>Charging station: ${coordination.currentUser || "free"}</li>
-            <li>Drone charging status: ${getChargingStatus("drone")}</li>
-            <li>Repair Rover charging status: ${getChargingStatus("repair_rover")}</li>
-            <li>Supply Rover charging status: ${getChargingStatus("supply_rover")}</li>
+            <li>Drone: ${getUnitStatus("drone")}</li>
+            <li>Repair Rover: ${getUnitStatus("repair_rover")}</li>
+            <li>Supply Rover: ${getUnitStatus("supply_rover")}</li>
         </ul>
 
         <p>

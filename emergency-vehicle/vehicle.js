@@ -7,6 +7,7 @@ const state = {
     status: "IDLE",
     missionId: null,
     progress: 0,
+    battery: 100,
     position: { x: 0, y: 0 },
     charging: {
         resourceId: config.chargingResourceId,
@@ -22,6 +23,7 @@ function registerVehicle() {
         type: config.type,
         role: config.role,
         status: state.status,
+        battery: state.battery,
         rpcHost: config.rpcHost,
         rpcPort: config.rpcPort,
         capabilities: config.capabilities

@@ -43,6 +43,7 @@ function createVehicleMqtt({ config, state }) {
             missionId: state.missionId,
             status: state.status,
             progress: state.progress,
+            battery: state.battery,
             position: state.position,
             charging: state.charging,
             message,
@@ -116,6 +117,7 @@ function createVehicleMqtt({ config, state }) {
         if (
             state.status !== "IDLE" ||
             state.missionId ||
+            state.battery >= 100 ||
             requestingResource ||
             usingResource ||
             peerVehicles.length === 0
@@ -169,6 +171,7 @@ function createVehicleMqtt({ config, state }) {
 
         usingResource = false;
         requestingResource = false;
+        state.battery = 100;
         updateCharging("NOT_REQUESTING", {
             releasedAt: new Date().toISOString()
         });

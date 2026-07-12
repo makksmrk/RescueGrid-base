@@ -2,6 +2,8 @@ const path = require("path");
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 
+const MISSION_BATTERY_COST = 20;
+
 function createMissionExecution({ config, state, publishTelemetry }) {
     const protoPath = path.join(__dirname, "..", "proto", "mission.proto");
     const packageDefinition = protoLoader.loadSync(protoPath, {
@@ -59,6 +61,9 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         for (const step of steps) {
             setTimeout(() => {
                 state.position = step.position;
+                if (step.status === "BUSY") {
+                    state.battery = Math.max(0, state.battery - MISSION_BATTERY_COST);
+                }
                 reportMission(mission.missionId, step.status, step.progress, step.message);
             }, step.delay);
         }
@@ -68,12 +73,13 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         const mission = call.request;
         if (state.status !== "IDLE" ||
             state.charging.status === "WAITING" ||
-            state.charging.status === "USING") {
+            state.charging.status === "USING" ||
+            state.battery <= 0) {
             callback(null, {
                 accepted: false,
                 vehicleId: config.vehicleId,
                 status: state.status,
-                message: "Vehicle is not available"
+                message: state.battery <= 0 ? "Vehicle battery is empty" : "Vehicle is not available"
             });
             return;
         }
