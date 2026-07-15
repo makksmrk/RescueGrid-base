@@ -194,7 +194,7 @@ POST {{baseUrl}}/incident/delete
 Content-Type: application/json
 
 {
-  "id": "incident-1783873670797-14"
+  "id": "incident-1784124645148-4"
 }
 
 ### Nicht vorhandener Endpoint -> 404 Not Found
