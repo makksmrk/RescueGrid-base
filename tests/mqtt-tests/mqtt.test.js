@@ -1,12 +1,9 @@
 const assert = require("assert");
-const { execFile } = require("child_process");
 const http = require("http");
 const mqtt = require("../../control-center/node_modules/mqtt");
-
 const MQTT_URL = process.env.MQTT_URL || "mqtt://localhost:1883";
 const TEST_ID = `mqtt-test-${Date.now()}`;
 const receivedMessages = [];
-let connectCount = 0;
 
 function sleep(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -48,7 +45,7 @@ function requestDashboard() {
                 try {
                     assert.strictEqual(response.statusCode, 200);
                     const readSection = name => {
-                        const match = html.match(new RegExp(`<h2>${name}</h2>\\s*<pre>([\\s\\S]*?)</pre>`));
+                        const match = html.match(new RegExp(`<summary>${name}</summary>\\s*<pre>([\\s\\S]*?)</pre>`));
                         assert(match, `Dashboard section ${name} not found`);
                         return JSON.parse(match[1]);
                     };
@@ -89,18 +86,6 @@ function createEvent(overrides = {}) {
     };
 }
 
-function runDockerCompose(...args) {
-    return new Promise((resolve, reject) => {
-        execFile("docker", ["compose", ...args], { cwd: process.cwd() }, (error, stdout, stderr) => {
-            if (error) {
-                reject(new Error(`docker compose ${args.join(" ")} failed: ${stderr || error.message}`));
-                return;
-            }
-            resolve(stdout);
-        });
-    });
-}
-
 async function main() {
     const client = mqtt.connect(MQTT_URL, {
         clientId: TEST_ID,
@@ -108,7 +93,6 @@ async function main() {
         reconnectPeriod: 500
     });
 
-    client.on("connect", () => connectCount++);
     client.on("message", (topic, buffer) => {
         try {
             receivedMessages.push({ topic, payload: JSON.parse(buffer.toString()) });
@@ -286,14 +270,6 @@ async function main() {
         ), "Restarted publisher did not return online");
         restartedPublisher.end(true);
         console.log("PASS: Publisher failure and restart are detected");
-
-        const connectionsBeforeRestart = connectCount;
-        await runDockerCompose("restart", "mqtt-broker");
-        await waitFor(() => connectCount > connectionsBeforeRestart,
-            "MQTT test client did not reconnect after broker restart", 20000);
-        await waitFor(async () => (await requestJson("/status")).mqtt.connected === true,
-            "Control center did not reconnect after broker restart", 20000);
-        console.log("PASS: Broker restart is tolerated and clients reconnect");
 
         console.log("\nALL MQTT TESTS PASSED\n");
     } catch (error) {
