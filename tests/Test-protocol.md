@@ -440,7 +440,43 @@ ALL MQTT TESTS PASSED
 - **Basis-URL:** `http://localhost:8080`
 - **Start des Systems vor dem Test:** `docker compose up --build -d`
 
-## Test 8 - Safety und Liveness
+## Test 8 - Batterie und Ladestation
+
+**Aufgabe / Meilenstein:** Aufgabe 4
+
+**Testtyp:** Funktional, automatisiert
+
+**Titel:** Prüfung von Batterieverbrauch und Aufladen
+
+**Ziel:** Prüfung, ob Fahrzeuge während der Arbeit Batterie verbrauchen, nicht gleichzeitig arbeiten und laden, und an der Ladestation wieder auf `100%` geladen werden.
+
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Die Leitstelle, der MQTT-Broker und die drei Fahrzeuge `drone-1`, `repair-rover-1` und `supply-rover-1` laufen über Docker Compose.
+
+**Durchführung:**
+
+```powershell
+npm run test:coordination
+```
+
+Der Test erzeugt Einsätze, liest die Fahrzeugzustände aus dem Dashboard und beobachtet Batterie, Arbeitsstatus und Ladezustand.
+
+**Erwartetes Ergebnis:**
+
+- Während der Arbeit sinkt der Batteriestand eines Fahrzeugs.
+- Ein Fahrzeug mit Status `BUSY` ist nicht gleichzeitig im Ladezustand `WAITING` oder `USING`.
+- Ein Fahrzeug mit Batterie unter `100%` wird an der Ladestation wieder auf `100%` geladen.
+
+**Tatsächliches Ergebnis:** Ein Fahrzeug verbrauchte während der Arbeit Batterie. Während der Beobachtung arbeitete kein Fahrzeug gleichzeitig und lud. Nach der Nutzung der Ladestation wurde die Batterie wieder auf `100%` gesetzt.
+
+```text
+PASS: supply-rover-1 uses battery during work (after work 60%)
+PASS: vehicles do not work while waiting for or using the charging station
+PASS: charging station restores vehicle battery to 100%
+```
+
+**Bewertung:** PASS
+
+## Test 9 - Safety und Liveness
 
 **Aufgabe / Meilenstein:** Aufgabe 4
 
@@ -476,7 +512,7 @@ PASS: Liveness - a waiting vehicle entered after another vehicle left
 
 **Bewertung:** PASS
 
-## Test 9 - Koordinationslatenz
+## Test 10 - Koordinationslatenz
 
 **Aufgabe / Meilenstein:** Aufgabe 4
 
@@ -488,14 +524,14 @@ PASS: Liveness - a waiting vehicle entered after another vehicle left
 
 **Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Die Fahrzeuge koordinieren den Zugriff auf die Ladestation über MQTT.
 
-**Durchführung:** Der Befehl aus Test 8 misst die Zeit zwischen `REQUEST` und `ENTER`.
+**Durchführung:** Der Befehl aus Test 8 misst zusätzlich die Zeit zwischen `REQUEST` und `ENTER`.
 
 **Erwartetes Ergebnis:** Die maximale Koordinationslatenz liegt unter `12000 ms`.
 
-**Tatsächliches Ergebnis:** Es wurde mindestens ein Zugriff gemessen. Die durchschnittliche Latenz betrug `51,0 ms`, die maximale Latenz `51 ms`.
+**Tatsächliches Ergebnis:** Es wurde mindestens ein Zugriff gemessen. Die durchschnittliche Latenz betrug `55,0 ms`, die maximale Latenz `55 ms`.
 
 ```text
-PASS: Non-functional latency - 1 accesses, average 51.0 ms, maximum 51 ms
+PASS: Non-functional latency - 1 accesses, average 55.0 ms, maximum 55 ms
 
 ALL COORDINATION TESTS PASSED
 ```

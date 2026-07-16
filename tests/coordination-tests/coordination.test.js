@@ -115,6 +115,27 @@ async function waitForSystemReady() {
     }, "System is not ready", 30000);
 }
 
+async function waitForRoleAvailable(role) {
+    return waitFor(async () => {
+        const units = await requestDashboardSection("Units");
+        const unit = units.find(item => item.role === role);
+        const chargingStatus = unit && unit.charging ? unit.charging.status : "NOT_REQUESTING";
+
+        if (
+            unit &&
+            unit.status === "IDLE" &&
+            !unit.currentMissionId &&
+            chargingStatus !== "WAITING" &&
+            chargingStatus !== "USING" &&
+            unit.battery > 0
+        ) {
+            return unit;
+        }
+
+        return null;
+    }, `No available ${role} found`, 90000);
+}
+
 async function triggerBatteryUse() {
     await postJson("/incident", {
         type: "person_detected",
@@ -150,6 +171,87 @@ async function waitForCoordinationReady() {
         }
         return null;
     }, "Coordination system is not ready", 45000);
+}
+
+async function testBatteryIsUsedDuringMission() {
+    await waitForRoleAvailable("repair_rover");
+    const unitsBeforeWork = await requestDashboardSection("Units");
+    const batteryBeforeByUnit = new Map(
+        unitsBeforeWork
+            .filter(unit => Number.isFinite(unit.battery))
+            .map(unit => [unit.id, unit.battery])
+    );
+
+    await triggerBatteryUse();
+
+    const busyUnit = await waitFor(async () => {
+        const units = await requestDashboardSection("Units");
+        return units.find(unit =>
+            unit.status === "BUSY" &&
+            batteryBeforeByUnit.has(unit.id) &&
+            unit.battery < batteryBeforeByUnit.get(unit.id)
+        );
+    }, "No vehicle used battery while working", 90000);
+
+    const batteryBeforeWork = batteryBeforeByUnit.get(busyUnit.id);
+    assert(
+        busyUnit.battery < batteryBeforeWork,
+        `Battery did not decrease during work: before ${batteryBeforeWork}, after ${busyUnit.battery}`
+    );
+    assert.notStrictEqual(busyUnit.charging && busyUnit.charging.status, "USING");
+    assert.notStrictEqual(busyUnit.charging && busyUnit.charging.status, "WAITING");
+
+    return {
+        vehicleId: busyUnit.id,
+        batteryAfterWork: busyUnit.battery
+    };
+}
+
+async function testNoVehicleWorksWhileCharging() {
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+        const units = await requestDashboardSection("Units");
+        const overlappingUnit = units.find(unit =>
+            unit.status === "BUSY" &&
+            unit.charging &&
+            (unit.charging.status === "WAITING" || unit.charging.status === "USING")
+        );
+
+        assert(
+            !overlappingUnit,
+            `${overlappingUnit ? overlappingUnit.id : "A vehicle"} is working and charging at the same time`
+        );
+
+        await sleep(200);
+    }
+}
+
+async function testChargingRestoresBattery() {
+    await triggerBatteryUse();
+
+    const using = await waitFor(async () => {
+        const units = await requestDashboardSection("Units");
+        return units.find(unit =>
+            unit.charging &&
+            unit.charging.status === "USING" &&
+            unit.battery < 100
+        );
+    }, "No vehicle started charging with battery below 100", 90000);
+
+    assert.notStrictEqual(using.status, "BUSY");
+    assert(!using.currentMissionId, `${using.id} is charging while a mission is active`);
+
+    const charged = await waitFor(async () => {
+        const units = await requestDashboardSection("Units");
+        return units.find(unit =>
+            unit.id === using.id &&
+            unit.charging &&
+            unit.charging.status === "NOT_REQUESTING" &&
+            unit.battery === 100
+        );
+    }, `${using.id} was not fully charged`, 30000);
+
+    assert.strictEqual(charged.battery, 100);
 }
 
 async function testSafety() {
@@ -261,6 +363,19 @@ async function main() {
         console.log("\nCOORDINATION TESTS - AUFGABE 4\n");
 
         await waitForSystemReady();
+
+        const batteryResult = await testBatteryIsUsedDuringMission();
+        console.log(
+            `PASS: ${batteryResult.vehicleId} uses battery during work ` +
+            `(after work ${batteryResult.batteryAfterWork}%)`
+        );
+
+        await testNoVehicleWorksWhileCharging();
+        console.log("PASS: vehicles do not work while waiting for or using the charging station");
+
+        await testChargingRestoresBattery();
+        console.log("PASS: charging station restores vehicle battery to 100%");
+
         await triggerBatteryUse();
         await waitForCoordinationReady();
         console.log("PASS: Coordination system is ready and all three vehicles participate");
