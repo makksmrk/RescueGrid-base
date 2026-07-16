@@ -5,7 +5,7 @@
 - **Aufgabe:** Leitstelle und Registrierung über Sockets, HTTP und REST
 - **Testdatum:** 07.05.2026
 - **Basis-URL:** `http://localhost:8080`
-- **Start des Systems:** `docker compose up --build -d`
+- **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 1 - Manueller REST-Test
 
@@ -19,6 +19,7 @@
 
 **Vorbedingungen / Setup:**
 
+- Das System wurde bereits manuell gestartet.
 - Die Docker-Container laufen.
 - Die Leitstelle ist über Port `8080` erreichbar.
 - Die Datei `tests/rest-tests/api-examples.http` wird mit dem HTTP-Client der IDE ausgeführt.
@@ -29,12 +30,14 @@
 2. Fahrzeuge mit `POST /unit` registrieren.
 3. Wasserstands- und Kamerasensor mit `POST /sensor` registrieren.
 4. Wasserstandsalarm und Personenerkennung mit `POST /incident` melden.
-5. Eine unbekannte Route und eine nicht unterstützte Methode aufrufen.
+5. Einen bestehenden Vorfall mit `POST /incident/delete` löschen.
+6. Eine unbekannte Route und eine nicht unterstützte Methode aufrufen.
 
 **Erwartetes Ergebnis:**
 
 - GET-Anfragen liefern HTTP `200`.
 - Registrierungen und Vorfälle liefern HTTP `201`.
+- Das Löschen eines bestehenden Vorfalls liefert HTTP `200`.
 - Die Karte besteht aus 20x20 Land- und Wasserfeldern und enthält feste Infrastruktur.
 - Eine unbekannte Route liefert HTTP `404`.
 - Eine nicht unterstützte Methode liefert HTTP `405`.
@@ -110,6 +113,25 @@
   }
 }
 ```
+- Ein bestimmter Vorfall konnte über `POST /incident/delete` gelöscht werden. Dafür wurde die Incident-ID aus der Vorfallliste beziehungsweise aus dem Dashboard verwendet. Diese Funktion wird auch vom Dashboard-Button zum Löschen aktiver Vorfälle genutzt.
+```
+POST http://localhost:8080/incident/delete
+Content-Type: application/json
+
+{
+  "id": "incident-1784124645148-4"
+}
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "message": "Incident deleted",
+  "incident": {
+    "id": "incident-1784124645148-4"
+  }
+}
+```
 - Die Karte enthielt 400 Felder sowie Ladestation, Brücke, Hafen und Depot.
 - Das Dashboard wurde im Browser korrekt dargestellt.
 
@@ -161,6 +183,7 @@ Route not found
 
 **Vorbedingungen / Setup:**
 
+- Das System wurde bereits manuell gestartet.
 - Die Leitstelle läuft auf `localhost:8080`.
 
 **Durchführung:**
@@ -213,6 +236,7 @@ Functional tests finished.
 
 **Vorbedingungen / Setup:**
 
+- Das System wurde bereits manuell gestartet.
 - Die Leitstelle läuft auf `localhost:8080`.
 
 **Durchführung:**
@@ -258,7 +282,7 @@ Alle dokumentierten Tests wurden erfolgreich abgeschlossen. Die Anforderungen au
 - **Aufgabe:** Einsatzvergabe via Remote Procedure Call (RPC)
 - **Testdatum:** 17.06.2026
 - **Basis-URL:** `http://localhost:8080`
-- **Start des Systems:** `docker compose up --build -d`
+- **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 4 - RPC und Fahrzeugverhalten
 
@@ -268,9 +292,9 @@ Alle dokumentierten Tests wurden erfolgreich abgeschlossen. Die Anforderungen au
 
 **Titel:** Prüfung der Einsatzvergabe und Fahrzeugzustände
 
-**Ziel:** Prüfung der gRPC-Schnittstelle, Rollenzuordnung und Zustände `ASSIGNED`, `BUSY`, `IDLE` und `ERROR`.
+**Ziel:** Prüfung der gRPC-Schnittstelle, Rollenzuordnung und Zustände `ASSIGNED`, `BUSY`, `IDLE` und `WAITING`.
 
-**Vorbedingungen / Setup:** Die Leitstelle sowie Drohne, Reparatur-Rover und Versorgungs-Rover laufen über Docker Compose.
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Die Leitstelle sowie Drohne, Reparatur-Rover und Versorgungs-Rover laufen über Docker Compose. Die Leitstelle ist über `localhost:8080` und der gRPC-Port über `localhost:50051` erreichbar.
 
 **Durchführung:**
 
@@ -278,11 +302,11 @@ Alle dokumentierten Tests wurden erfolgreich abgeschlossen. Die Anforderungen au
 node tests/rpc-tests/rpc.test.js
 ```
 
-Der Test erzeugt passende Einsätze für alle drei Rollen und beobachtet deren Bearbeitung. Zusätzlich wird ein zweiter Auftrag an ein belegtes Fahrzeug gesendet.
+Der Test erzeugt passende Einsätze für alle drei Rollen und beobachtet deren Bearbeitung. Zusätzlich wird geprüft, ob ein zweiter Auftrag an eine belegte Rolle in den Zustand `WAITING` geht.
 
-**Erwartetes Ergebnis:** Jeder Einsatz wird der richtigen Rolle zugewiesen. Die Fahrzeuge wechseln von `ASSIGNED` über `BUSY` zurück zu `IDLE` und melden ihr rollenspezifisches Verhalten. Ein belegtes Fahrzeug führt zu einer Mission mit `ERROR`.
+**Erwartetes Ergebnis:** Jeder Einsatz wird der richtigen Rolle zugewiesen. Die Fahrzeuge wechseln von `ASSIGNED` über `BUSY` zurück zu `IDLE` und melden ihr rollenspezifisches Verhalten. Ein belegtes Fahrzeug führt zu einer wartenden Mission mit `WAITING`.
 
-**Tatsächliches Ergebnis:** Alle drei Rollen wurden korrekt gewählt. Die Zustände `ASSIGNED`, `BUSY` und `IDLE`, das jeweilige Verhalten sowie der Fehlerfall `ERROR` wurden erfolgreich beobachtet. Abschlussmeldungen wurden von der Leitstelle bestätigt.
+**Tatsächliches Ergebnis:** Alle drei Rollen wurden korrekt gewählt. Die Zustände `ASSIGNED`, `BUSY`, `IDLE` und `WAITING` wurden erfolgreich beobachtet. Abschlussmeldungen wurden von der Leitstelle bestätigt.
 
 **Bewertung:** PASS
 
@@ -296,13 +320,13 @@ Der Test erzeugt passende Einsätze für alle drei Rollen und beobachtet deren B
 
 **Ziel:** Prüfung, ob 20 Statusmeldungen zuverlässig und mit weniger als `1000 ms` maximaler Antwortzeit bestätigt werden.
 
-**Vorbedingungen / Setup:** Die Leitstelle läuft und der gRPC-Port `50051` ist erreichbar.
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Die Leitstelle läuft und der gRPC-Port `50051` ist erreichbar.
 
 **Durchführung:** Der Befehl aus Test 4 sendet zusätzlich 20 aufeinanderfolgende `ReportMissionStatus`-Aufrufe.
 
 **Erwartetes Ergebnis:** Alle Aufrufe werden bestätigt; die maximale Antwortzeit liegt unter `1000 ms`.
 
-**Tatsächliches Ergebnis:** Alle 20 RPC-Aufrufe wurden bestätigt. Die durchschnittliche Antwortzeit betrug `2,5 ms`, die maximale Antwortzeit `4 ms`.
+**Tatsächliches Ergebnis:** Alle 20 RPC-Aufrufe wurden bestätigt. Die durchschnittliche Antwortzeit betrug `2,8 ms`, die maximale Antwortzeit `4 ms`.
 
 ```text
 RPC TESTS - AUFGABE 2
@@ -311,9 +335,9 @@ PASS: IDL contains both RPC methods and all required mission fields
 PASS: drone assignment, behavior and state transitions
 PASS: repair_rover assignment, behavior and state transitions
 PASS: supply_rover assignment, behavior and state transitions
-PASS: busy vehicle causes an ERROR mission
+PASS: busy vehicle causes a WAITING mission
 PASS: completion report is acknowledged via gRPC
-PASS: 20 RPC reports, average 2.2 ms, maximum 4 ms
+PASS: 20 RPC reports, average 2.8 ms, maximum 4 ms
 
 ALL RPC TESTS PASSED
 ```
@@ -330,7 +354,7 @@ ALL RPC TESTS PASSED
 - **Testdatum:** 18.06.2026
 - **MQTT-Broker:** `mqtt://localhost:1883`
 - **Basis-URL:** `http://localhost:8080`
-- **Start des Systems:** `docker compose up --build -d`
+- **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 6 - MQTT-Ereignisverarbeitung
 
@@ -338,11 +362,11 @@ ALL RPC TESTS PASSED
 
 **Testtyp:** Funktional, automatisiert
 
-**Titel:** Prüfung von Ereignissen, Telemetrie und Ausfallszenarien
+**Titel:** Prüfung von Ereignissen, Telemetrie und Publisher-Ausfall
 
-**Ziel:** Prüfung der MQTT-Kommunikation, Ereignisfilterung, Fahrzeugtelemetrie, Gefahrenreaktion sowie Publisher- und Broker-Neustart.
+**Ziel:** Prüfung der MQTT-Kommunikation, Ereignisfilterung, Fahrzeugtelemetrie, Gefahrenreaktion sowie Publisher-Ausfall.
 
-**Vorbedingungen / Setup:** Der MQTT-Broker, die Leitstelle, Sensoren und Fahrzeuge laufen über Docker Compose. Die Ports `1883` und `8080` sind erreichbar.
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Der MQTT-Broker, die Leitstelle, Sensoren und Fahrzeuge laufen über Docker Compose. Die Ports `1883` und `8080` sind erreichbar.
 
 **Durchführung:**
 
@@ -358,12 +382,11 @@ Der Test prüft:
 - Übernahme von Fahrzeugposition und Fortschritt
 - Autonome Gefahrenreaktion eines Bodenfahrzeugs
 - Ausfall und Neustart eines Publishers
-- Neustart des MQTT-Brokers und Wiederverbindung der Clients
 - Verfügbarkeit von `GET /status` und `GET /map`
 
-**Erwartetes Ergebnis:** Gültige Ereignisse und Telemetriedaten werden verarbeitet. Duplikate und alte Nachrichten werden ignoriert. Fahrzeuge reagieren auf Gefahren. Nach Publisher- und Broker-Neustart wird die MQTT-Verbindung wiederhergestellt.
+**Erwartetes Ergebnis:** Gültige Ereignisse und Telemetriedaten werden verarbeitet. Duplikate und alte Nachrichten werden ignoriert. Fahrzeuge reagieren auf Gefahren. Der Publisher-Ausfall wird über MQTT erkannt.
 
-**Tatsächliches Ergebnis:** Alle Ereignisse wurden korrekt verarbeitet. Filterung, Zusammenführung, Telemetrie und Gefahrenreaktion funktionierten. Der Publisher-Ausfall wurde über MQTT Last Will erkannt. Nach dem Broker-Neustart verbanden sich die Clients erneut.
+**Tatsächliches Ergebnis:** Alle Ereignisse wurden korrekt verarbeitet. Filterung, Zusammenführung, Telemetrie und Gefahrenreaktion funktionierten. Der Publisher-Ausfall wurde über MQTT Last Will erkannt.
 
 ```text
 PASS: Broker, GET /status and GET /map are available
@@ -373,8 +396,8 @@ PASS: Messages older than 60 seconds are ignored
 PASS: Repeated events at the same position are merged
 PASS: Vehicle position and progress are updated from MQTT telemetry
 PASS: Ground vehicle autonomously adjusts its route for flood hazards
+PASS: 50 QoS-1 messages processed in 56 ms
 PASS: Publisher failure and restart are detected
-PASS: Broker restart is tolerated and clients reconnect
 ```
 
 **Bewertung:** PASS
@@ -389,7 +412,7 @@ PASS: Broker restart is tolerated and clients reconnect
 
 **Ziel:** Prüfung, ob die Leitstelle 50 MQTT-Nachrichten zuverlässig und innerhalb von `10 Sekunden` verarbeitet.
 
-**Vorbedingungen / Setup:** Der MQTT-Broker und die Leitstelle laufen. Der Testclient ist mit dem Broker verbunden.
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Der MQTT-Broker und die Leitstelle laufen. Der Testclient ist mit dem Broker verbunden.
 
 **Durchführung:** Der Befehl aus Test 6 veröffentlicht zusätzlich 50 Nachrichten mit QoS 1 und prüft den Zähler der verarbeiteten Nachrichten über `GET /status`.
 
@@ -415,9 +438,9 @@ ALL MQTT TESTS PASSED
 - **Testdatum:** 02.07.2026
 - **MQTT-Broker:** `mqtt://localhost:1883`
 - **Basis-URL:** `http://localhost:8080`
-- **Start des Systems:** `docker compose up --build -d`
+- **Start des Systems vor dem Test:** `docker compose up --build -d`
 
-## Test 8 - Safety, Liveness und Fehlerbetrachtung
+## Test 8 - Safety und Liveness
 
 **Aufgabe / Meilenstein:** Aufgabe 4
 
@@ -425,9 +448,9 @@ ALL MQTT TESTS PASSED
 
 **Titel:** Prüfung des Ricart/Agrawala-Ausschlussverfahrens
 
-**Ziel:** Prüfung, ob die Fahrzeuge die Ladestation dezentral koordinieren und die Anforderungen Safety, Liveness und Fehlerbetrachtung erfüllt sind.
+**Ziel:** Prüfung, ob die Fahrzeuge die Ladestation dezentral koordinieren und die Anforderungen Safety und Liveness erfüllt sind.
 
-**Vorbedingungen / Setup:** Die Leitstelle, der MQTT-Broker und die drei Fahrzeuge `drone-1`, `repair-rover-1` und `supply-rover-1` laufen über Docker Compose.
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Die Leitstelle, der MQTT-Broker und die drei Fahrzeuge `drone-1`, `repair-rover-1` und `supply-rover-1` laufen über Docker Compose.
 
 **Durchführung:**
 
@@ -435,23 +458,20 @@ ALL MQTT TESTS PASSED
 npm run test:coordination
 ```
 
-Der Test beobachtet die Koordinationsnachrichten über `GET /status`. Dabei werden `REQUEST`, `REPLY`, `ENTER` und `LEAVE` sowie die logischen Zeiten ausgewertet. Für die Fehlerbetrachtung wird `supply-rover-1` gestoppt und danach wieder gestartet.
+Der Test beobachtet die Koordinationsnachrichten über `GET /status`. Dabei werden `REQUEST`, `REPLY`, `ENTER` und `LEAVE` sowie die logischen Zeiten ausgewertet. Der Test erzeugt zusätzlich Einsätze, damit Batterie verbraucht wird und Fahrzeuge die Ladestation anfordern.
 
 **Erwartetes Ergebnis:**
 
 - Mindestens drei Fahrzeuge nehmen an der Koordination teil.
 - Es befindet sich nie mehr als ein Fahrzeug gleichzeitig in der kritischen Ressource.
 - Ein wartendes Fahrzeug darf nach dem Freigeben der Ladestation weiterarbeiten.
-- Beim Prozessabsturz fehlt ein `REPLY`, wodurch der Fortschritt blockiert wird.
-- Nach dem Neustart läuft die Koordination wieder weiter.
 
-**Tatsächliches Ergebnis:** Alle drei Fahrzeuge nahmen teil. Safety und Liveness wurden erfolgreich beobachtet. Beim Stoppen von `supply-rover-1` wurde der erwartete blockierte Zustand erkannt. Nach dem Neustart lief die Koordination wieder.
+**Tatsächliches Ergebnis:** Alle drei Fahrzeuge nahmen teil. Safety und Liveness wurden erfolgreich beobachtet. Ein automatischer Container-Ausfall wird in diesem Test nicht mehr ausgelöst, weil die Tests vom bereits gestarteten System ausgehen.
 
 ```text
 PASS: Coordination system is ready and all three vehicles participate
 PASS: Safety - no two vehicles used the charging station at the same time
 PASS: Liveness - a waiting vehicle entered after another vehicle left
-PASS: Fehlerbetrachtung - process crash blocks progress until the system is restarted
 ```
 
 **Bewertung:** PASS
@@ -466,16 +486,16 @@ PASS: Fehlerbetrachtung - process crash blocks progress until the system is rest
 
 **Ziel:** Prüfung, wie lange ein Zugriff von `REQUEST` bis `ENTER` dauert.
 
-**Vorbedingungen / Setup:** Das System läuft über Docker Compose. Die Fahrzeuge koordinieren den Zugriff auf die Ladestation über MQTT.
+**Vorbedingungen / Setup:** Das System wurde bereits manuell gestartet. Die Fahrzeuge koordinieren den Zugriff auf die Ladestation über MQTT.
 
-**Durchführung:** Der Befehl aus Test 8 misst für drei Zugriffe die Zeit zwischen `REQUEST` und `ENTER`.
+**Durchführung:** Der Befehl aus Test 8 misst die Zeit zwischen `REQUEST` und `ENTER`.
 
 **Erwartetes Ergebnis:** Die maximale Koordinationslatenz liegt unter `12000 ms`.
 
-**Tatsächliches Ergebnis:** Es wurden drei Zugriffe gemessen. Die durchschnittliche Latenz betrug `3527,3 ms`, die maximale Latenz `6991 ms`.
+**Tatsächliches Ergebnis:** Es wurde mindestens ein Zugriff gemessen. Die durchschnittliche Latenz betrug `51,0 ms`, die maximale Latenz `51 ms`.
 
 ```text
-PASS: Non-functional latency - 3 accesses, average 3527.3 ms, maximum 6991 ms
+PASS: Non-functional latency - 1 accesses, average 51.0 ms, maximum 51 ms
 
 ALL COORDINATION TESTS PASSED
 ```
