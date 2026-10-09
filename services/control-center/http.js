@@ -45,6 +45,16 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 const path = request.path;
                 const body = request.body;
 
+                if (method === "GET" && path === "/health") {
+                    const ready = state.rpcReady && state.mqttState.connected;
+                    sendJson(socket, ready ? 200 : 503, ready ? "OK" : "Service Unavailable", {
+                        ready,
+                        grpc: state.rpcReady,
+                        mqtt: state.mqttState.connected
+                    });
+                    return;
+                }
+
                 if (method === "GET" && path === "/") {
                     const html = generateDashboard({
                         map: islandMap,

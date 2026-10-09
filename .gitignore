@@ -3,4 +3,7 @@ node_modules/
 /services/emergency-vehicle/node_modules
 /services/control-center/node_modules
 
+.env
+.env.*
+!.env.example
 

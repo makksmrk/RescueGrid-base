@@ -1,102 +1,128 @@
-# System nutzen und debuggen
+# Running RescueGrid
 
-Kurze Anleitung zum Starten, Testen und Debuggen des Projekts.
+RescueGrid runs as seven services with Docker Compose: a Mosquitto broker, the Control Center, three vehicles, and two sensors. Run all commands below from the repository root.
 
-## Voraussetzungen
+## Docker quick start
 
-| Tool | Windows | Linux |
-| ---- | ------- | ----- |
-| Docker | Docker Desktop installieren und starten | Docker Engine + Docker Compose Plugin installieren |
-| Node.js | Node.js LTS installieren | Node.js LTS installieren |
-| REST-Client | IntelliJ/WebStorm `.http` Datei oder VS Code REST Client | IntelliJ/WebStorm `.http` Datei oder VS Code REST Client |
-
-Wichtig: Docker muss laufen, bevor das System gestartet wird.
-
-## Dependencies installieren
-
-Normalerweise baut Docker alles selbst. Für lokale Tests oder lokale Starts trotzdem einmal installieren:
-
-```bash
-npm install
-npm install --prefix control-center
-npm install --prefix emergency-vehicle
-npm install --prefix water-sensor
-npm install --prefix camera-sensor
-```
-
-Unter Windows können die gleichen Befehle in PowerShell benutzt werden.
-
-## Build und Start mit Docker
-
-```bash
-docker compose up --build
-```
-
-Im Hintergrund starten:
+Install Docker Engine with the Compose plugin on Linux, or Docker Desktop on Windows, and start Docker. A host Node.js installation is not required for the Docker workflow.
 
 ```bash
 docker compose up --build -d
+docker compose ps
 ```
 
-Dashboard öffnen:
+Open [the dashboard](http://localhost:8080). The Control Center becomes healthy once its HTTP endpoint, gRPC listener, and MQTT subscription are ready. Vehicles and sensors wait for that healthcheck before starting. Registration requests time out after five seconds and retry failures every three seconds. This handles startup delays; it does not implement recovery of in-memory state after a Control Center restart.
 
-```text
-http://localhost:8080
-```
-
-System stoppen:
+Stop the system:
 
 ```bash
 docker compose down
 ```
 
-Komplett neu bauen:
+Inspect logs:
 
 ```bash
-docker compose down
-docker compose build --no-cache
-docker compose up
+docker compose logs -f
+docker compose logs -f control-center
+docker compose logs -f drone-1
 ```
 
-## Container
+## Ports
 
-| Container | Aufgabe |
-| --------- | ------- |
-| `mqtt-broker` | MQTT-Broker |
-| `control-center` | REST, Dashboard, MQTT-Listener, gRPC |
-| `drone-1` | Drohne |
-| `repair-rover-1` | Reparatur-Rover |
-| `supply-rover-1` | Versorgungs-Rover |
-| `water-sensor` | Wassersensor |
-| `camera-sensor` | Kamerasensor |
+| Interface | Default host port | Container port |
+| --- | --- | --- |
+| Dashboard / HTTP API | 8080 | 8080 |
+| Control Center gRPC | 50051 | 50051 |
+| MQTT broker | 1883 | 1883 |
 
-## Wichtige Ports
+Vehicle gRPC ports 50052–50054 are internal to the Compose network.
 
-| Port | Bedeutung |
-| ---- | --------- |
-| `8080` | Dashboard und REST-API |
-| `1883` | MQTT-Broker |
-| `50051` | gRPC Control Center |
-| `50052-50054` | gRPC Fahrzeuge, intern in Docker |
+To change host ports, copy `.env.example` to `.env` and edit `HOST_HTTP_PORT`, `HOST_RPC_PORT`, or `HOST_MQTT_PORT`. Internal service addresses and ports stay unchanged. For example, `HOST_HTTP_PORT=8081` exposes the dashboard at `http://localhost:8081`.
 
-## REST manuell testen
+## Local Node.js development
 
-Datei:
+Use Node.js 22, matching the Docker images and package engines. `.nvmrc` selects that major version for version managers that support it. The root package manages all four services as npm workspaces, with one committed `package-lock.json`.
 
-```text
-tests/rest-tests/api-examples.http
+Install dependencies for every service with:
+
+```bash
+npm ci
 ```
 
-Dort kannst du z. B. Status prüfen, Incidents erstellen oder Incidents löschen.
+After intentionally changing a dependency, update the root lockfile with `npm install`. Do not maintain separate lockfiles inside services. Docker installs only the selected service's production dependencies from the root lockfile.
 
-Wichtige Endpunkte:
+Start a service from the root with:
 
-```text
-GET  http://localhost:8080/status
-GET  http://localhost:8080/map
-POST http://localhost:8080/incident
-POST http://localhost:8080/incident/delete
+```bash
+npm start --workspace=control-center
+npm start --workspace=emergency-vehicle
+npm start --workspace=water-sensor
+npm start --workspace=camera-sensor
 ```
+
+For native execution, configure the addresses first: the defaults use Docker DNS names. A local MQTT broker must already be available. Set environment variables using your shell's syntax.
+
+Linux example:
+
+```bash
+MQTT_URL=mqtt://localhost:1883 npm start --workspace=control-center
+```
+
+PowerShell example:
+
+```powershell
+$env:MQTT_URL = "mqtt://localhost:1883"
+npm start --workspace=control-center
+```
+
+For a native sensor, also set `CONTROL_CENTER_HOST=localhost`. Native vehicles require a reachable `RPC_HOST` (such as `localhost`), distinct `VEHICLE_ID` and `RPC_PORT` values, and a consistent `COORDINATION_PEERS` list. Start all configured peers for charging coordination to progress. Avoid running native services and Compose services on the same occupied ports.
+
+## Service configuration
+
+These variables configure service processes directly. Compose supplies the standard topology; its `.env` file currently overrides only the three host ports described above.
+
+| Variable | Applies to | Default |
+| --- | --- | --- |
+| `MQTT_URL` | All Node services | `mqtt://mqtt-broker:1883` |
+| `HTTP_PORT` | Control Center | `8080` |
+| `RPC_PORT` | Control Center / vehicle | `50051` / `50052` |
+| `CONTROL_CENTER_HOST` | Vehicles / sensors | `control-center` |
+| `CONTROL_CENTER_HTTP_PORT` | Vehicles / sensors | `8080` |
+| `CONTROL_CENTER_RPC_PORT` | Vehicles | `50051` |
+| `VEHICLE_ID` | Vehicles | `drone-1` |
+| `VEHICLE_ROLE` | Vehicles | `drone` |
+| `RPC_HOST` | Vehicles; advertised gRPC address | Vehicle ID |
+| `COORDINATION_PEERS` | Vehicles | `drone-1,repair-rover-1,supply-rover-1` |
+| `CHARGING_RESOURCE_ID` | Vehicles | `charging_station` |
+| `CHARGING_REQUEST_INTERVAL_MS` | Vehicles | `15000` |
+| `CHARGING_USE_DURATION_MS` | Vehicles | `4000` |
+| `SENSOR_ID` | Water / camera sensor | `water-sensor-1` / `camera-1` |
+
+Ports must be integers between 1 and 65535. Durations must be positive integers within Node's timer range. Component IDs use letters, digits, underscores, and hyphens. Vehicle roles are `drone`, `repair_rover`, or `supply_rover`. The coordination list must contain unique IDs, include the vehicle itself, and contain at least two participants. Invalid configuration stops startup with an error.
+
+Keep `CHARGING_RESOURCE_ID=charging_station` in the standard topology: the Control Center currently observes that resource. Custom resource observation and multi-host deployment are outside the current scope.
+
+## Readiness and troubleshooting
+
+```bash
+curl http://localhost:8080/health
+curl http://localhost:8080/status
+```
+
+PowerShell:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/health
+Invoke-RestMethod http://localhost:8080/status
+```
+
+`GET /health` returns 200 when ready and 503 otherwise. It reports gRPC and MQTT readiness; it does not assert that every vehicle or sensor is available. MQTT disconnects make it return 503. Compose startup dependencies do not automatically restart already-running services after a later dependency failure.
+
+If startup fails, inspect `docker compose ps` and the relevant service logs. If a host port is occupied, select another port in `.env`. For manual API examples, see `tests/rest-tests/api-examples.http`.
+
+## Existing test workflow (deferred)
+
+The test workflow has not been migrated in this change. Some scripts still import dependencies from a service-local `node_modules` path and need adjustment for workspace installation in a later stage. The existing instructions below are retained for reference, not a verified workflow.
 
 ## Automatisierte Tests
 
@@ -116,110 +142,4 @@ npm run test:coordination
 ```
 
 Die Tests starten und stoppen die Container nicht selbst.
-
-## Logs ansehen
-
-Alle Logs:
-
-```bash
-docker compose logs -f
-```
-
-Nur Control Center:
-
-```bash
-docker compose logs -f control-center
-```
-
-Nur ein Fahrzeug:
-
-```bash
-docker compose logs -f drone-1
-docker compose logs -f repair-rover-1
-docker compose logs -f supply-rover-1
-```
-
-Containerstatus:
-
-```bash
-docker compose ps
-```
-
-## Typische Debug-Schritte
-
-1. Prüfen, ob alle Container laufen:
-
-```bash
-docker compose ps
-```
-
-2. Dashboard öffnen:
-
-```text
-http://localhost:8080
-```
-
-3. Systemstatus prüfen:
-
-```bash
-curl http://localhost:8080/status
-```
-
-Windows PowerShell:
-
-```powershell
-Invoke-RestMethod http://localhost:8080/status
-```
-
-4. Logs prüfen:
-
-```bash
-docker compose logs -f control-center
-```
-
-5. Wenn Ports blockiert sind, altes System stoppen:
-
-```bash
-docker compose down
-```
-
-## Was im Dashboard beobachtet werden kann
-
-- offene Incidents blinken rot
-- passende Unit erscheint am Incident-Feld
-- Unit-Status wechselt z. B. `ASSIGNED`, `BUSY`, `IDLE`
-- Batterie sinkt während der Arbeit
-- Charging Station zeigt, welches Fahrzeug lädt
-- nach der Lösung wird das Kartenfeld wieder normal
-
-## Lokaler Start ohne Docker
-
-Für normale Nutzung ist Docker einfacher. Lokal geht es nur, wenn ein MQTT-Broker läuft und die Umgebungsvariablen passend gesetzt sind.
-
-Beispiel Control Center:
-
-```bash
-cd control-center
-set MQTT_URL=mqtt://localhost:1883
-node server.js
-```
-
-Linux/macOS:
-
-```bash
-cd control-center
-MQTT_URL=mqtt://localhost:1883 node server.js
-```
-
-Für Fahrzeuge müssen zusätzlich `VEHICLE_ID`, `VEHICLE_ROLE`, `RPC_PORT` und `COORDINATION_PEERS` gesetzt werden. Für das Praktikum ist deshalb Docker der empfohlene Weg.
-
-## Häufige Probleme
-
-| Problem | Lösung |
-| ------- | ------ |
-| Dashboard nicht erreichbar | `docker compose ps` und Logs vom `control-center` prüfen |
-| Port `8080` oder `1883` belegt | anderes Programm stoppen oder `docker compose down` ausführen |
-| Incidents werden nicht gelöst | prüfen, ob passende Fahrzeuge laufen |
-| Batterie bleibt leer | prüfen, ob Fahrzeug `IDLE` ist und Charging-Logs vorhanden sind |
-| Tests schlagen fehl | erst System starten, kurz warten, dann Tests ausführen |
 

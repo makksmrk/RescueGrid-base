@@ -1,11 +1,19 @@
 {
-  "name": "VS_Praktikum",
+  "name": "rescuegrid",
   "version": "1.0.0",
-  "description": "",
+  "description": "Distributed disaster response simulator using TCP/HTTP, gRPC and MQTT",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:mqtt": "node tests/mqtt-tests/mqtt.test.js",
     "test:coordination": "node tests/coordination-tests/coordination.test.js"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "workspaces": [
+    "services/control-center",
+    "services/emergency-vehicle",
+    "services/sensors/*"
+  ]
 }

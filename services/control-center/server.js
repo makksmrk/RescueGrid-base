@@ -5,12 +5,14 @@ const { startHttpServer } = require("./http");
 const { islandMap, WIDTH, HEIGHT } = require("./map");
 const { createMissionService } = require("./missions");
 const { startMqtt } = require("./mqtt");
+const config = require("../shared/config");
 
-const PORT = 8080;
-const RPC_PORT = 50051;
-const MQTT_URL = process.env.MQTT_URL || "mqtt://mqtt-broker:1883";
+const PORT = config.port("HTTP_PORT", 8080);
+const RPC_PORT = config.port("RPC_PORT", 50051);
+const MQTT_URL = config.mqttUrl();
 
 const state = {
+    rpcReady: false,
     units: [],
     sensors: [],
     incidents: [],
@@ -34,7 +36,7 @@ const state = {
     }
 };
 
-const protoPath = path.join(__dirname, "..", "proto", "mission.proto");
+const protoPath = path.join(__dirname, "..", "..", "proto", "mission.proto");
 const packageDefinition = protoLoader.loadSync(protoPath, {
     keepCase: false,
     longs: String,
@@ -69,7 +71,8 @@ rpcServer.addService(missionProto.ControlCenterService.service, {
 rpcServer.bindAsync(`0.0.0.0:${RPC_PORT}`, grpc.ServerCredentials.createInsecure(), error => {
     if (error) {
         console.error(error);
-        return;
+        process.exit(1);
     }
+    state.rpcReady = true;
     console.log(`Control center gRPC server listening on ${RPC_PORT}`);
 });

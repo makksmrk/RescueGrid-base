@@ -7,9 +7,10 @@ COPY services/control-center/package.json ./services/control-center/
 COPY services/emergency-vehicle/package.json ./services/emergency-vehicle/
 COPY services/sensors/water-sensor/package.json ./services/sensors/water-sensor/
 COPY services/sensors/camera-sensor/package.json ./services/sensors/camera-sensor/
-RUN npm ci --omit=dev --workspace=camera-sensor --include-workspace-root=false
+RUN npm ci --omit=dev --workspace=emergency-vehicle --include-workspace-root=false
 
-COPY services/sensors/camera-sensor/ ./services/sensors/camera-sensor/
+COPY services/emergency-vehicle/ ./services/emergency-vehicle/
 COPY services/shared/ ./services/shared/
+COPY proto/ ./proto/
 
-CMD ["node", "services/sensors/camera-sensor/sensor.js"]
+CMD ["node", "services/emergency-vehicle/vehicle.js"]

@@ -1,4 +1,4 @@
-const http = require("http");
+const { createRegistration } = require("../shared/registration");
 const config = require("./config");
 const { createMissionExecution } = require("./missions");
 const { createVehicleMqtt } = require("./mqtt");
@@ -17,8 +17,12 @@ const state = {
     }
 };
 
-function registerVehicle() {
-    const data = JSON.stringify({
+const registration = createRegistration({
+    host: config.controlCenterHost,
+    port: config.controlCenterHttpPort,
+    path: "/unit",
+    label: config.vehicleId,
+    getPayload: () => ({
         id: config.vehicleId,
         type: config.type,
         role: config.role,
@@ -27,27 +31,8 @@ function registerVehicle() {
         rpcHost: config.rpcHost,
         rpcPort: config.rpcPort,
         capabilities: config.capabilities
-    });
-    const req = http.request({
-        hostname: config.controlCenterHost,
-        port: config.controlCenterHttpPort,
-        path: "/unit",
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(data)
-        }
-    }, response => {
-        console.log(`Registered ${config.vehicleId} as ${config.role}: HTTP ${response.statusCode}`);
-        response.resume();
-    });
-    req.on("error", error => {
-        console.error("Registration failed:", error.message);
-        setTimeout(registerVehicle, 3000);
-    });
-    req.write(data);
-    req.end();
-}
+    })
+});
 
 const vehicleMqtt = createVehicleMqtt({ config, state });
 const missionExecution = createMissionExecution({
@@ -56,9 +41,10 @@ const missionExecution = createMissionExecution({
     publishTelemetry: vehicleMqtt.publishTelemetry
 });
 
-missionExecution.start(registerVehicle);
+missionExecution.start(registration.start);
 
 process.on("SIGTERM", () => {
+    registration.stop();
     vehicleMqtt.stop();
     missionExecution.stop();
 });

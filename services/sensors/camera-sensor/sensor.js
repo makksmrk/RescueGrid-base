@@ -1,9 +1,12 @@
 const { randomUUID } = require("crypto");
-const http = require("http");
+const env = require("../../shared/config");
+const { createRegistration } = require("../../shared/registration");
 const mqtt = require("mqtt");
 
-const sensorId = "camera-1";
-const mqttUrl = process.env.MQTT_URL || "mqtt://mqtt-broker:1883";
+const sensorId = env.identifier("SENSOR_ID", "camera-1");
+const mqttUrl = env.mqttUrl();
+const controlCenterHost = env.text("CONTROL_CENTER_HOST", "control-center");
+const controlCenterPort = env.port("CONTROL_CENTER_HTTP_PORT", 8080);
 const eventTopic = `island/events/camera/${sensorId}`;
 const statusTopic = `island/status/${sensorId}`;
 let measurementInterval;
@@ -34,33 +37,17 @@ function publishStatus(status, done) {
     }), { qos: 1, retain: true }, done);
 }
 
-function registerSensor() {
-    const data = JSON.stringify({
+const registration = createRegistration({
+    host: controlCenterHost,
+    port: controlCenterPort,
+    path: "/sensor",
+    label: sensorId,
+    getPayload: () => ({
         id: sensorId,
         type: "camera",
         measurement: "person_confidence"
-    });
-    const req = http.request({
-        hostname: "control-center",
-        port: 8080,
-        path: "/sensor",
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(data)
-        }
-    }, (res) => {
-        console.log(`Registered ${sensorId}: HTTP ${res.statusCode}`);
-        res.resume();
-    });
-
-    req.on("error", (error) => {
-        console.error("Sensor registration failed:", error.message);
-        setTimeout(registerSensor, 3000);
-    });
-    req.write(data);
-    req.end();
-}
+    })
+});
 
 function publishMeasurement() {
     const confidence = Number(Math.random().toFixed(3));
@@ -93,7 +80,7 @@ client.on("connect", () => {
     console.log(`${sensorId} connected to MQTT`);
     publishStatus("online");
 
-    registerSensor();
+    registration.start();
     if (!measurementInterval) {
         publishMeasurement();
         measurementInterval = setInterval(publishMeasurement, 7000);
@@ -103,6 +90,7 @@ client.on("connect", () => {
 client.on("error", error => console.error("MQTT error:", error.message));
 
 process.on("SIGTERM", () => {
+    registration.stop();
     clearInterval(measurementInterval);
     publishStatus("offline", () => client.end());
 });

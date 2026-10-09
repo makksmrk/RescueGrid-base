@@ -208,12 +208,13 @@ function startMqtt({ mqttUrl, state, missions }) {
 
     const client = mqtt.connect(mqttUrl, { clientId: "control-center", clean: true });
     client.on("connect", () => {
-        state.mqttState.connected = true;
+        state.mqttState.connected = false;
         console.log(`Control center connected to MQTT at ${mqttUrl}`);
         client.subscribe(["island/events/+/+", "island/telemetry/+", "island/status/+", coordinationTopic],
             { qos: 1 },
             error => {
                 if (error) console.error("MQTT subscription failed:", error.message);
+                else state.mqttState.connected = true;
             });
     });
     client.on("reconnect", () => state.mqttState.connected = false);

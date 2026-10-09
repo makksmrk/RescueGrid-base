@@ -4,5 +4,11 @@
   "private": true,
   "dependencies": {
     "mqtt": "^5.10.4"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node sensor.js"
   }
 }

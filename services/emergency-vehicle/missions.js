@@ -5,7 +5,7 @@ const protoLoader = require("@grpc/proto-loader");
 const MISSION_BATTERY_COST = 20;
 
 function createMissionExecution({ config, state, publishTelemetry }) {
-    const protoPath = path.join(__dirname, "..", "proto", "mission.proto");
+    const protoPath = path.join(__dirname, "..", "..", "proto", "mission.proto");
     const packageDefinition = protoLoader.loadSync(protoPath, {
         keepCase: false,
         longs: String,
@@ -105,7 +105,7 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         server.bindAsync(`0.0.0.0:${config.rpcPort}`, grpc.ServerCredentials.createInsecure(), error => {
             if (error) {
                 console.error(error);
-                return;
+                process.exit(1);
             }
             console.log(`${config.vehicleId} gRPC server listening on ${config.rpcPort}`);
             onStarted();

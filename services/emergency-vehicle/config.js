@@ -1,3 +1,5 @@
+const env = require("../shared/config");
+
 const roleConfig = {
     drone: {
         type: "drone",
@@ -16,25 +18,34 @@ const roleConfig = {
     }
 };
 
-const role = process.env.VEHICLE_ROLE || "drone";
-const selectedRole = roleConfig[role] || roleConfig.drone;
-const coordinationPeers = (process.env.COORDINATION_PEERS || "drone-1,repair-rover-1,supply-rover-1")
+const role = env.text("VEHICLE_ROLE", "drone");
+if (!Object.hasOwn(roleConfig, role)) {
+    throw new Error(`VEHICLE_ROLE must be one of: ${Object.keys(roleConfig).join(", ")}`);
+}
+const selectedRole = roleConfig[role];
+const vehicleId = env.identifier("VEHICLE_ID", "drone-1");
+const coordinationPeers = env.text("COORDINATION_PEERS", "drone-1,repair-rover-1,supply-rover-1")
     .split(",")
-    .map(peer => peer.trim())
-    .filter(Boolean);
+    .map(peer => peer.trim());
+if (coordinationPeers.length < 2 ||
+    coordinationPeers.some(peer => !/^[a-zA-Z0-9_-]+$/.test(peer)) ||
+    new Set(coordinationPeers).size !== coordinationPeers.length ||
+    !coordinationPeers.includes(vehicleId)) {
+    throw new Error("COORDINATION_PEERS must contain at least two unique IDs, including VEHICLE_ID");
+}
 
 module.exports = {
-    vehicleId: process.env.VEHICLE_ID || "vehicle-1",
+    vehicleId,
     role,
-    rpcPort: Number(process.env.RPC_PORT || 50052),
-    rpcHost: process.env.RPC_HOST || process.env.VEHICLE_ID || "vehicle-1",
-    controlCenterHost: process.env.CONTROL_CENTER_HOST || "control-center",
-    controlCenterHttpPort: Number(process.env.CONTROL_CENTER_HTTP_PORT || 8080),
-    controlCenterRpcPort: Number(process.env.CONTROL_CENTER_RPC_PORT || 50051),
-    mqttUrl: process.env.MQTT_URL || "mqtt://mqtt-broker:1883",
+    rpcPort: env.port("RPC_PORT", 50052),
+    rpcHost: env.text("RPC_HOST", vehicleId),
+    controlCenterHost: env.text("CONTROL_CENTER_HOST", "control-center"),
+    controlCenterHttpPort: env.port("CONTROL_CENTER_HTTP_PORT", 8080),
+    controlCenterRpcPort: env.port("CONTROL_CENTER_RPC_PORT", 50051),
+    mqttUrl: env.mqttUrl(),
     coordinationPeers,
-    chargingResourceId: process.env.CHARGING_RESOURCE_ID || "charging_station",
-    chargingRequestIntervalMs: Number(process.env.CHARGING_REQUEST_INTERVAL_MS || 15000),
-    chargingUseDurationMs: Number(process.env.CHARGING_USE_DURATION_MS || 4000),
+    chargingResourceId: env.identifier("CHARGING_RESOURCE_ID", "charging_station"),
+    chargingRequestIntervalMs: env.integer("CHARGING_REQUEST_INTERVAL_MS", 15000),
+    chargingUseDurationMs: env.integer("CHARGING_USE_DURATION_MS", 4000),
     ...selectedRole
 };

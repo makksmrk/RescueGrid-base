@@ -4,7 +4,7 @@ services:
     image: eclipse-mosquitto:2
     container_name: mqtt-broker
     ports:
-      - "1883:1883"
+      - "${HOST_MQTT_PORT:-1883}:1883"
     volumes:
       - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     healthcheck:
@@ -20,10 +20,18 @@ services:
     container_name: control-center
 
     ports:
-      - "8080:8080"
-      - "50051:50051"
+      - "${HOST_HTTP_PORT:-8080}:8080"
+      - "${HOST_RPC_PORT:-50051}:50051"
     environment:
       MQTT_URL: mqtt://mqtt-broker:1883
+      HTTP_PORT: 8080
+      RPC_PORT: 50051
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const req = http.get({ host: '127.0.0.1', port: process.env.HTTP_PORT || 8080, path: '/health' }, res => { res.resume(); process.exit(res.statusCode === 200 ? 0 : 1); }); req.setTimeout(2000, () => req.destroy()); req.on('error', () => process.exit(1));"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     depends_on:
       mqtt-broker:
         condition: service_healthy
@@ -41,7 +49,7 @@ services:
       COORDINATION_PEERS: drone-1,repair-rover-1,supply-rover-1
     depends_on:
       control-center:
-        condition: service_started
+        condition: service_healthy
       mqtt-broker:
         condition: service_healthy
 
@@ -58,7 +66,7 @@ services:
       COORDINATION_PEERS: drone-1,repair-rover-1,supply-rover-1
     depends_on:
       control-center:
-        condition: service_started
+        condition: service_healthy
       mqtt-broker:
         condition: service_healthy
 
@@ -75,28 +83,32 @@ services:
       COORDINATION_PEERS: drone-1,repair-rover-1,supply-rover-1
     depends_on:
       control-center:
-        condition: service_started
+        condition: service_healthy
       mqtt-broker:
         condition: service_healthy
 
   water-sensor:
-    build: services/sensors/water-sensor
+    build:
+      context: .
+      dockerfile: services/sensors/water-sensor/Dockerfile
     container_name: water-sensor
     environment:
       MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
       control-center:
-        condition: service_started
+        condition: service_healthy
       mqtt-broker:
         condition: service_healthy
 
   camera-sensor:
-    build: services/sensors/camera-sensor
+    build:
+      context: .
+      dockerfile: services/sensors/camera-sensor/Dockerfile
     container_name: camera-sensor
     environment:
       MQTT_URL: mqtt://mqtt-broker:1883
     depends_on:
       control-center:
-        condition: service_started
+        condition: service_healthy
       mqtt-broker:
         condition: service_healthy
