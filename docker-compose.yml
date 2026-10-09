@@ -16,7 +16,7 @@ services:
   control-center:
     build:
       context: .
-      dockerfile: control-center/Dockerfile
+      dockerfile: services/control-center/Dockerfile
     container_name: control-center
 
     ports:
@@ -31,7 +31,7 @@ services:
   drone-1:
     build:
       context: .
-      dockerfile: emergency-vehicle/Dockerfile
+      dockerfile: services/emergency-vehicle/Dockerfile
     container_name: drone-1
     environment:
       VEHICLE_ID: drone-1
@@ -48,7 +48,7 @@ services:
   repair-rover-1:
     build:
       context: .
-      dockerfile: emergency-vehicle/Dockerfile
+      dockerfile: services/emergency-vehicle/Dockerfile
     container_name: repair-rover-1
     environment:
       VEHICLE_ID: repair-rover-1
@@ -65,7 +65,7 @@ services:
   supply-rover-1:
     build:
       context: .
-      dockerfile: emergency-vehicle/Dockerfile
+      dockerfile: services/emergency-vehicle/Dockerfile
     container_name: supply-rover-1
     environment:
       VEHICLE_ID: supply-rover-1
@@ -80,7 +80,7 @@ services:
         condition: service_healthy
 
   water-sensor:
-    build: ./water-sensor
+    build: services/sensors/water-sensor
     container_name: water-sensor
     environment:
       MQTT_URL: mqtt://mqtt-broker:1883
@@ -91,7 +91,7 @@ services:
         condition: service_healthy
 
   camera-sensor:
-    build: ./camera-sensor
+    build: services/sensors/camera-sensor
     container_name: camera-sensor
     environment:
       MQTT_URL: mqtt://mqtt-broker:1883

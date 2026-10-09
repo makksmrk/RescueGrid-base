@@ -1,15 +1,13 @@
-# Testprotokoll - Aufgabe 1
+# Testprotokoll
 
 ## Allgemeine Angaben
 
-- **Aufgabe:** Leitstelle und Registrierung über Sockets, HTTP und REST
+- **Beschreibung:** Leitstelle und Registrierung über Sockets, HTTP und REST
 - **Testdatum:** 07.05.2026
 - **Basis-URL:** `http://localhost:8080`
 - **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 1 - Manueller REST-Test
-
-**Aufgabe / Meilenstein:** Aufgabe 1
 
 **Testtyp:** Funktional, manuell
 
@@ -22,7 +20,7 @@
 - Das System wurde bereits manuell gestartet.
 - Die Docker-Container laufen.
 - Die Leitstelle ist über Port `8080` erreichbar.
-- Die Datei `tests/rest-tests/api-examples.http` wird mit dem HTTP-Client der IDE ausgeführt.
+- Die Datei `../tests/rest-tests/api-examples.http` wird mit dem HTTP-Client der IDE ausgeführt.
 
 **Durchführung:**
 
@@ -46,10 +44,10 @@
 
 - Dashboard lieferte HTTP `200`. (GET)
 
-[Dashboard Response File](protocol-attachements/2026-06-16T221641.200.html)
+[Dashboard Response File](attachements/2026-06-16T221641.200.html)
 - Karte lieferte HTTP `200`. (GET)
 
-[Map Response File](protocol-attachements/2026-06-18T013540.200.json)
+[Map Response File](attachements/2026-06-18T013540.200.json)
 - Status lieferte HTTP `200`. (GET)
 ```
 {
@@ -136,7 +134,7 @@ Content-Type: application/json
 - Das Dashboard wurde im Browser korrekt dargestellt.
 
 
-  ![dashboard-screenshot](protocol-attachements/aufgabe1-dashboard-screenshot.png)
+  ![dashboard-screenshot](attachements/dashboard-screenshot.png)
 
 
 - Die Fehlerfälle lieferten HTTP `404` beziehungsweise `405`.
@@ -163,17 +161,15 @@ Route not found
 
 **Artefakte / Nachweise:**
 
-- [`rest-tests/api-examples.http`](rest-tests/api-examples.http)
-- [`../control-center/server.js`](../control-center/server.js)
-- [`../control-center/map.js`](../control-center/map.js)
+- [`../tests/rest-tests/api-examples.http`](../tests/rest-tests/api-examples.http)
+- [`../services/control-center`](../services/control-center/server.js)
+- [`../services/control-center`](../services/control-center/map.js)
 
 **Bewertung:** PASS
 
 ---
 
 ## Test 2 - Automatisierter Funktionstest
-
-**Aufgabe / Meilenstein:** Aufgabe 1
 
 **Testtyp:** Funktional, automatisiert
 
@@ -226,8 +222,6 @@ Functional tests finished.
 
 ## Test 3 - Lasttest
 
-**Aufgabe / Meilenstein:** Aufgabe 1
-
 **Testtyp:** Nicht-funktional, automatisiert
 
 **Titel:** 100 parallele Fahrzeugregistrierungen
@@ -275,18 +269,16 @@ Alle dokumentierten Tests wurden erfolgreich abgeschlossen. Die Anforderungen au
 
 ---
 
-# Aufgabe 2 - Einsatzvergabe über RPC
+# Einsatzvergabe über RPC
 
 ## Allgemeine Angaben
 
-- **Aufgabe:** Einsatzvergabe via Remote Procedure Call (RPC)
+- **Beschreibung:** Einsatzvergabe via Remote Procedure Call (RPC)
 - **Testdatum:** 17.06.2026
 - **Basis-URL:** `http://localhost:8080`
 - **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 4 - RPC und Fahrzeugverhalten
-
-**Aufgabe / Meilenstein:** Aufgabe 2
 
 **Testtyp:** Funktional, automatisiert
 
@@ -312,8 +304,6 @@ Der Test erzeugt passende Einsätze für alle drei Rollen und beobachtet deren B
 
 ## Test 5 - RPC-Antwortzeit
 
-**Aufgabe / Meilenstein:** Aufgabe 2
-
 **Testtyp:** Nicht-funktional, automatisiert
 
 **Titel:** Antwortzeit bei 20 RPC-Statusmeldungen
@@ -329,7 +319,7 @@ Der Test erzeugt passende Einsätze für alle drei Rollen und beobachtet deren B
 **Tatsächliches Ergebnis:** Alle 20 RPC-Aufrufe wurden bestätigt. Die durchschnittliche Antwortzeit betrug `2,8 ms`, die maximale Antwortzeit `4 ms`.
 
 ```text
-RPC TESTS - AUFGABE 2
+RPC TESTS
 
 PASS: IDL contains both RPC methods and all required mission fields
 PASS: drone assignment, behavior and state transitions
@@ -346,19 +336,17 @@ ALL RPC TESTS PASSED
 
 ---
 
-# Aufgabe 3 - Ereignisse und Telemetrie über MQTT
+# Ereignisse und Telemetrie über MQTT
 
 ## Allgemeine Angaben
 
-- **Aufgabe:** Ereignisse und Telemetrie über Message-oriented Middleware (MQTT)
+- **Beschreibung:** Ereignisse und Telemetrie über Message-oriented Middleware (MQTT)
 - **Testdatum:** 18.06.2026
 - **MQTT-Broker:** `mqtt://localhost:1883`
 - **Basis-URL:** `http://localhost:8080`
 - **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 6 - MQTT-Ereignisverarbeitung
-
-**Aufgabe / Meilenstein:** Aufgabe 3
 
 **Testtyp:** Funktional, automatisiert
 
@@ -404,8 +392,6 @@ PASS: Publisher failure and restart are detected
 
 ## Test 7 - MQTT-Lasttest
 
-**Aufgabe / Meilenstein:** Aufgabe 3
-
 **Testtyp:** Nicht-funktional, automatisiert
 
 **Titel:** Verarbeitung von 50 MQTT-Nachrichten mit QoS 1
@@ -430,19 +416,17 @@ ALL MQTT TESTS PASSED
 
 ---
 
-# Aufgabe 4 - Verteilte Koordination mit Ricart/Agrawala
+# Verteilte Koordination mit Ricart/Agrawala
 
 ## Allgemeine Angaben
 
-- **Aufgabe:** Dezentrale Koordination des Zugriffs auf die Ladestation
+- **Beschreibung:** Dezentrale Koordination des Zugriffs auf die Ladestation
 - **Testdatum:** 02.07.2026
 - **MQTT-Broker:** `mqtt://localhost:1883`
 - **Basis-URL:** `http://localhost:8080`
 - **Start des Systems vor dem Test:** `docker compose up --build -d`
 
 ## Test 8 - Batterie und Ladestation
-
-**Aufgabe / Meilenstein:** Aufgabe 4
 
 **Testtyp:** Funktional, automatisiert
 
@@ -478,8 +462,6 @@ PASS: charging station restores vehicle battery to 100%
 
 ## Test 9 - Safety und Liveness
 
-**Aufgabe / Meilenstein:** Aufgabe 4
-
 **Testtyp:** Funktional, automatisiert
 
 **Titel:** Prüfung des Ricart/Agrawala-Ausschlussverfahrens
@@ -513,8 +495,6 @@ PASS: Liveness - a waiting vehicle entered after another vehicle left
 **Bewertung:** PASS
 
 ## Test 10 - Koordinationslatenz
-
-**Aufgabe / Meilenstein:** Aufgabe 4
 
 **Testtyp:** Nicht-funktional, automatisiert
 

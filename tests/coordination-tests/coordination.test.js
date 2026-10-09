@@ -360,7 +360,7 @@ async function testCoordinationLatency() {
 
 async function main() {
     try {
-        console.log("\nCOORDINATION TESTS - AUFGABE 4\n");
+        console.log("\nCOORDINATION TESTS\n");
 
         await waitForSystemReady();
 

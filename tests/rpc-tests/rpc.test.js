@@ -2,8 +2,8 @@ const assert = require("assert");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
-const grpc = require("../../control-center/node_modules/@grpc/grpc-js");
-const protoLoader = require("../../control-center/node_modules/@grpc/proto-loader");
+const grpc = require("../../services/control-center/node_modules/@grpc/grpc-js");
+const protoLoader = require("../../services/control-center/node_modules/@grpc/proto-loader");
 
 const protoPath = path.join(__dirname, "..", "..", "proto", "mission.proto");
 const packageDefinition = protoLoader.loadSync(protoPath, {
@@ -204,7 +204,7 @@ async function testRpcReports() {
 
 async function main() {
     try {
-        console.log("\nRPC TESTS - AUFGABE 2\n");
+        console.log("\nRPC TESTS\n");
 
         await waitForSystemReady();
 

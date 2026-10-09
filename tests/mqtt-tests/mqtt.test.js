@@ -1,6 +1,6 @@
 const assert = require("assert");
 const http = require("http");
-const mqtt = require("../../control-center/node_modules/mqtt");
+const mqtt = require("../../services/control-center/node_modules/mqtt");
 const MQTT_URL = process.env.MQTT_URL || "mqtt://localhost:1883";
 const TEST_ID = `mqtt-test-${Date.now()}`;
 const receivedMessages = [];
@@ -102,7 +102,7 @@ async function main() {
     });
 
     try {
-        console.log("\nMQTT TESTS - AUFGABE 3\n");
+        console.log("\nMQTT TESTS\n");
 
         await waitFor(() => client.connected, "MQTT broker is not reachable");
         await new Promise((resolve, reject) => client.subscribe(

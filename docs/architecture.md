@@ -2,7 +2,7 @@
 
 ## Containerdiagramm
 
-![Grafische Containerarchitektur](architecture.png)
+![Grafische Containerarchitektur](attachements/architecture.png)
 
 **Legende:** Durchgezogene Linien zeigen MQTT/HTTP-Datenflüsse, gestrichelte Linien die REST-Registrierung und dicke Linien die gRPC-Einsatzkommunikation. Die Bilder zeigen die Hauptarchitektur; Details wie Batterie- und Ladestationslogik sind darunter textuell ergänzt.
 
@@ -82,6 +82,6 @@ Ein Fahrzeug darf nicht gleichzeitig arbeiten und laden. Es fragt die Ladestatio
 
 ## Sequenzdiagramm des Einsatzablaufs
 
-![Sequenzdiagramm des vollständigen Einsatzablaufs](sequence-diagram.png)
+![Sequenzdiagramm des vollständigen Einsatzablaufs](attachements/sequence-diagram.png)
 
 Das Diagramm zeigt den zeitlichen Ablauf von einem simulierten Sensorwert bis zur aktualisierten Anzeige im Dashboard. Die Leitstelle filtert MQTT-Nachrichten, erzeugt einen Vorfall, wählt eine Fahrzeugrolle und vergibt den Einsatz per gRPC. Fortschritt und Abschluss werden anschließend über gRPC und MQTT zurückgemeldet. Die zusätzliche Batterie- und Ladestationslogik läuft parallel über die MQTT-Koordination der Fahrzeuge.

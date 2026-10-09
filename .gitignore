@@ -1,9 +1,6 @@
-package-lock.json
 node_modules/
 /.idea
-/emergency-vehicle/node_modules
-/emergency-vehicle/package-lock.json
-/control-center/node_modules
-/control-center/package-lock.json
+/services/emergency-vehicle/node_modules
+/services/control-center/node_modules
 
 
