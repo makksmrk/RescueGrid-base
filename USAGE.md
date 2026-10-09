@@ -120,6 +120,14 @@ Invoke-RestMethod http://localhost:8080/status
 
 If startup fails, inspect `docker compose ps` and the relevant service logs. If a host port is occupied, select another port in `.env`. For manual API examples, see `tests/rest-tests/api-examples.http`.
 
+## Mission lifecycle
+
+Mission states are `WAITING`, `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, and `FAILED`. Vehicle states remain `IDLE`, `ASSIGNED`, `BUSY`, and `ERROR`; charging is tracked separately. A mission consumes 20 battery points, so an available vehicle needs at least 20 points and must not be waiting for or using the charging station.
+
+Assignment and status-report RPCs have a three-second deadline. Temporary rejection leaves the mission waiting. If an assignment acknowledgement is lost, its outcome is uncertain: the mission stays assigned to that vehicle and is not automatically sent elsewhere. A subsequent gRPC report or MQTT mission report can confirm progress or completion. If neither arrives, the assignment remains reserved; automatic crash/restart recovery is outside the current scope.
+
+Failure to deliver a gRPC status report does not change the vehicle's execution state. MQTT heartbeat telemetry also carries its latest mission report. Incidents can be deleted only after resolution and without an active mission; other deletion requests return HTTP 409.
+
 ## Existing test workflow (deferred)
 
 The test workflow has not been migrated in this change. Some scripts still import dependencies from a service-local `node_modules` path and need adjustment for workspace installation in a later stage. The existing instructions below are retained for reference, not a verified workflow.
@@ -142,4 +150,3 @@ npm run test:coordination
 ```
 
 Die Tests starten und stoppen die Container nicht selbst.
-

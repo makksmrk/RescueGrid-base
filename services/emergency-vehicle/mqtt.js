@@ -41,6 +41,7 @@ function createVehicleMqtt({ config, state }) {
             rpcPort: config.rpcPort,
             capabilities: config.capabilities,
             missionId: state.missionId,
+            missionReport: state.missionReport || null,
             status: state.status,
             progress: state.progress,
             battery: state.battery,

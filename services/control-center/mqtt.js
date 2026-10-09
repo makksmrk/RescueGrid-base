@@ -98,17 +98,10 @@ function startMqtt({ mqttUrl, state, missions }) {
             lastMessage: payload.message
         });
         if (payload.error) update.lastError = payload.error;
+        if (payload.reportError) update.lastReportError = payload.reportError;
         if (payload.hazard) update.lastHazardAction = payload.hazard;
 
-        const unit = missions.upsertUnit(update);
-        if (payload.missionId) {
-            const mission = state.missions.find(item => item.id === payload.missionId);
-            if (mission) {
-                mission.position = payload.position;
-                mission.updatedAt = payload.timestamp;
-                if (payload.error) mission.error = payload.error;
-            }
-        }
+        const unit = missions.upsertUnit(update, payload.missionReport);
         console.log(`Telemetry ${unit.id}: ${unit.status},work progress: ${unit.progress}%`);
     }
 
@@ -120,10 +113,15 @@ function startMqtt({ mqttUrl, state, missions }) {
         componentConnections.set(payload.componentId, connection);
 
         const component = findComponent(payload.componentId);
-        if (component) Object.assign(component, {
-            connectionStatus: connection.status,
-            connectionUpdatedAt: connection.timestamp
-        });
+        if (component) {
+            const update = {
+                id: component.id,
+                connectionStatus: connection.status,
+                connectionUpdatedAt: connection.timestamp
+            };
+            if (state.units.includes(component)) missions.upsertUnit(update);
+            else Object.assign(component, update);
+        }
     }
 
     function rememberCoordinationMessage(payload) {

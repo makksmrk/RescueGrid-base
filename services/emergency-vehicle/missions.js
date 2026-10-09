@@ -2,7 +2,7 @@ const path = require("path");
 const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 
-const MISSION_BATTERY_COST = 20;
+const { MISSION_BATTERY_COST, RPC_TIMEOUT_MS, isTerminalMission, vehicleStatusForMission, canAcceptMission } = require("../shared/missions");
 
 function createMissionExecution({ config, state, publishTelemetry }) {
     const protoPath = path.join(__dirname, "..", "..", "proto", "mission.proto");
@@ -19,24 +19,24 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         grpc.credentials.createInsecure()
     );
 
+    const missionTimers = new Set();
+
     function reportMission(missionId, status, progress, message) {
-        state.status = status;
+        state.status = vehicleStatusForMission(status);
         state.progress = progress;
-        state.missionId = status === "IDLE" ? null : missionId;
-        publishTelemetry(message, { missionId });
+        state.missionId = isTerminalMission(status) ? null : missionId;
+        state.missionReport = { missionId, status, progress, message };
+        publishTelemetry(message);
 
         controlCenterClient.ReportMissionStatus({
-            missionId,
-            vehicleId: config.vehicleId,
-            status,
-            progress,
-            message
-        }, error => {
+            ...state.missionReport,
+            vehicleId: config.vehicleId
+        }, { deadline: Date.now() + RPC_TIMEOUT_MS }, error => {
             if (!error) return;
             console.error("Mission report failed:", error.message);
-            state.status = "ERROR";
-            state.missionId = missionId;
-            publishTelemetry("Mission report failed", { error: error.message });
+            // Delivery failure does not change the physical execution state.
+            // Heartbeat telemetry also carries the latest mission report.
+            publishTelemetry("Mission report delivery failed", { reportError: error.message });
         });
     }
 
@@ -44,14 +44,14 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         const steps = [
             {
                 delay: 4000,
-                status: "BUSY",
+                status: "IN_PROGRESS",
                 progress: 80,
                 position: mission.target,
                 message: `${config.vehicleId} ${config.behavior}`
             },
             {
                 delay: 9000,
-                status: "IDLE",
+                status: "COMPLETED",
                 progress: 100,
                 position: mission.target,
                 message: `${config.vehicleId} hat ${mission.type} abgeschlossen`
@@ -59,28 +59,40 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         ];
 
         for (const step of steps) {
-            setTimeout(() => {
+            const timer = setTimeout(() => {
+                missionTimers.delete(timer);
+                if (state.missionId !== mission.missionId) return;
                 state.position = step.position;
-                if (step.status === "BUSY") {
+                if (step.status === "IN_PROGRESS") {
                     state.battery = Math.max(0, state.battery - MISSION_BATTERY_COST);
                 }
                 reportMission(mission.missionId, step.status, step.progress, step.message);
             }, step.delay);
+            missionTimers.add(timer);
         }
+    }
+
+    function assignmentAck(accepted, message) {
+        return {
+            accepted,
+            vehicleId: config.vehicleId,
+            status: state.status,
+            message,
+            currentMissionId: state.missionId || "",
+            chargingStatus: state.charging.status,
+            battery: state.battery
+        };
     }
 
     function assignMission(call, callback) {
         const mission = call.request;
-        if (state.status !== "IDLE" ||
-            state.charging.status === "WAITING" ||
-            state.charging.status === "USING" ||
-            state.battery <= 0) {
-            callback(null, {
-                accepted: false,
-                vehicleId: config.vehicleId,
-                status: state.status,
-                message: state.battery <= 0 ? "Vehicle battery is empty" : "Vehicle is not available"
-            });
+        if (state.missionId === mission.missionId) {
+            callback(null, assignmentAck(true, "Mission already accepted"));
+            return;
+        }
+        if (!canAcceptMission(state, state.missionId)) {
+            callback(null, assignmentAck(false, state.battery < MISSION_BATTERY_COST
+                ? "Insufficient battery for mission" : "Vehicle is not available"));
             return;
         }
 
@@ -88,13 +100,10 @@ function createMissionExecution({ config, state, publishTelemetry }) {
         state.missionId = mission.missionId;
         state.progress = 0;
         console.log(`Assigned mission ${mission.missionId} (${mission.type})`);
-        publishTelemetry(`${config.vehicleId} hat den Einsatz angenommen`);
-        callback(null, {
-            accepted: true,
-            vehicleId: config.vehicleId,
-            status: state.status,
-            message: `${config.vehicleId} accepted mission ${mission.missionId}`
-        });
+        const message = `${config.vehicleId} accepted mission ${mission.missionId}`;
+        state.missionReport = { missionId: mission.missionId, status: "ASSIGNED", progress: 0, message };
+        publishTelemetry(message);
+        callback(null, assignmentAck(true, message));
         simulateMission(mission);
     }
 
@@ -113,6 +122,8 @@ function createMissionExecution({ config, state, publishTelemetry }) {
     }
 
     function stop() {
+        for (const timer of missionTimers) clearTimeout(timer);
+        missionTimers.clear();
         controlCenterClient.close();
         server.tryShutdown(() => {});
     }

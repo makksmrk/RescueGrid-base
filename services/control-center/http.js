@@ -1,6 +1,7 @@
 const net = require("net");
 const { generateDashboard } = require("./dashboard");
 const { parseRequest } = require("./requestParser");
+const { isActiveMission } = require("../shared/missions");
 
 function sendResponse(socket, statusCode, statusText, contentType, body) {
     socket.end(
@@ -79,7 +80,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                         incidents: state.incidents.length,
                         missions: state.missions.length,
                         activeMissions: state.missions.filter(
-                            mission => mission.status !== "IDLE" && mission.status !== "ERROR"
+                            mission => isActiveMission(mission.status)
                         ).length,
                         mqtt: state.mqttState,
                         coordination: state.coordination
@@ -128,7 +129,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 if (method === "POST" && path === "/incident/delete") {
                     const deletedIncident = missions.deleteIncident(JSON.parse(body).id);
                     if (!deletedIncident) {
-                        sendResponse(socket, 404, "Not Found", "text/plain", "Incident not found");
+                        sendJson(socket, 404, "Not Found", { message: "Incident not found" });
                         return;
                     }
                     sendJson(socket, 200, "OK", {
@@ -145,6 +146,10 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
 
                 sendResponse(socket, 404, "Not Found", "text/plain", "Route not found");
             } catch (error) {
+                if (error.statusCode === 409) {
+                    sendJson(socket, 409, "Conflict", { message: error.message });
+                    return;
+                }
                 console.error(error);
                 sendResponse(socket, 500, "Internal Server Error", "text/plain", "Internal Server Error");
             }

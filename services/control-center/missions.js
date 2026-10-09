@@ -1,4 +1,5 @@
 const grpc = require("@grpc/grpc-js");
+const { RPC_TIMEOUT_MS, isActiveMission, isTerminalMission, vehicleStatusForMission, canAcceptMission } = require("../shared/missions");
 
 const MISSION_RULES = {
     person_detected: { missionType: "aerial_inspection", role: "drone", priority: 10 },
@@ -22,14 +23,37 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         return islandMap[y][x];
     }
 
-    function upsertUnit(unit) {
-        const existingUnit = state.units.find(item => item.id === unit.id);
-        if (existingUnit) {
-            Object.assign(existingUnit, unit);
-            retryWaitingMissions();
-            return existingUnit;
+    function upsertUnit(update, missionReport) {
+        let unit = state.units.find(item => item.id === update.id);
+        if (unit && update.lastTelemetryAt && unit.lastTelemetryAt &&
+            Date.parse(update.lastTelemetryAt) < Date.parse(unit.lastTelemetryAt)) return unit;
+
+        if (!unit) {
+            unit = { id: update.id };
+            state.units.push(unit);
         }
-        state.units.push(unit);
+        const assignedMission = state.missions.find(mission =>
+            mission.vehicleId === unit.id && ["ASSIGNED", "IN_PROGRESS"].includes(mission.status)
+        );
+        const reportedMission = state.missions.find(mission => mission.id === update.currentMissionId);
+        const lifecycle = { status: unit.status, currentMissionId: unit.currentMissionId, progress: unit.progress };
+        Object.assign(unit, update);
+        // Registration and telemetry must not erase an assignment in flight,
+        // or resurrect a finished mission from a delayed vehicle snapshot.
+        if (assignedMission) {
+            unit.status = vehicleStatusForMission(assignedMission.status);
+            unit.currentMissionId = assignedMission.id;
+            unit.progress = assignedMission.progress;
+        } else if (reportedMission && isTerminalMission(reportedMission.status)) {
+            Object.assign(unit, lifecycle);
+        }
+        if (missionReport && state.missions.some(mission => mission.id === missionReport.missionId)) {
+            try {
+                updateMissionStatus({ ...missionReport, vehicleId: unit.id, position: update.position });
+            } catch (error) {
+                console.error(`Ignored mission telemetry: ${error.message}`);
+            }
+        }
         retryWaitingMissions();
         return unit;
     }
@@ -52,7 +76,6 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         const assignment = getMissionType(incident);
         if (!assignment) return null;
 
-        const unit = findIdleUnit(assignment.role);
         const createdAt = now();
 
         const mission = {
@@ -62,59 +85,73 @@ function createMissionService({ state, islandMap, width, height, missionProto })
             target: { x: incident.x, y: incident.y },
             priority: assignment.priority,
             requiredRole: assignment.role,
-            vehicleId: unit ? unit.id : null,
-            status: unit ? "ASSIGNED" : "WAITING",
+            vehicleId: null,
+            status: "WAITING",
             progress: 0,
-            message: unit ? "Mission assigned via gRPC" : "Waiting for suitable vehicle",
+            message: "Waiting for suitable vehicle",
             createdAt,
             updatedAt: createdAt
         };
 
         state.missions.push(mission);
-        if (unit) dispatchMission(mission, unit);
+        retryWaitingMissions();
         return mission;
     }
 
     function findIdleUnit(role) {
-        return state.units.find(item =>
-            item.role === role &&
-            item.status === "IDLE" &&
-            item.rpcHost &&
-            item.rpcPort
+        return state.units.find(unit =>
+            unit.role === role &&
+            canAcceptMission(unit, unit.currentMissionId) &&
+            unit.connectionStatus === "online" &&
+            unit.rpcHost && unit.rpcPort &&
+            !state.missions.some(mission => mission.vehicleId === unit.id &&
+                ["ASSIGNED", "IN_PROGRESS"].includes(mission.status))
         );
     }
 
     function dispatchMission(mission, unit) {
         mission.vehicleId = unit.id;
         mission.status = "ASSIGNED";
+        mission.assignmentConfirmed = false;
         mission.message = "Mission assigned via gRPC";
         mission.updatedAt = now();
         unit.status = "ASSIGNED";
         unit.currentMissionId = mission.id;
+        unit.progress = 0;
 
         const client = new missionProto.VehicleService(
             `${unit.rpcHost}:${unit.rpcPort}`,
             grpc.credentials.createInsecure()
         );
-
         client.AssignMission({
             missionId: mission.id,
             incidentId: mission.incidentId,
             type: mission.type,
             target: mission.target,
             priority: mission.priority
-        }, (error, response) => {
-            mission.updatedAt = now();
-            if (error || !response.accepted) {
-                mission.status = "ERROR";
-                mission.message = error ? error.message : response.message;
-                unit.status = "ERROR";
-            } else {
-                mission.status = response.status;
-                mission.message = response.message;
-                unit.status = response.status;
-            }
+        }, { deadline: Date.now() + RPC_TIMEOUT_MS }, (error, response) => {
             client.close();
+            // A report may arrive before the acknowledgement.
+            if (mission.status !== "ASSIGNED" || mission.assignmentConfirmed || mission.vehicleId !== unit.id) return;
+            mission.updatedAt = now();
+            if (error) {
+                // Delivery is uncertain: retain the assignment, never resend blindly.
+                mission.message = `Assignment outcome unknown: ${error.message}`;
+                return;
+            }
+            if (!response.accepted) {
+                mission.status = "WAITING";
+                mission.vehicleId = null;
+                mission.message = response.message;
+                if (unit.currentMissionId === mission.id) {
+                    unit.status = response.status;
+                    unit.currentMissionId = response.currentMissionId || null;
+                    unit.battery = response.battery;
+                    unit.charging = { ...unit.charging, status: response.chargingStatus };
+                }
+            } else {
+                mission.assignmentConfirmed = true;
+            }
         });
     }
 
@@ -129,33 +166,54 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         }
     }
 
-    function reportMissionStatus(call, callback) {
-        const report = call.request;
+    function updateMissionStatus(report) {
         const mission = state.missions.find(item => item.id === report.missionId);
         const unit = state.units.find(item => item.id === report.vehicleId);
+        function reject(code, message) {
+            throw Object.assign(new Error(message), { code });
+        }
+        if (!mission || !unit) reject(grpc.status.NOT_FOUND, "Unknown mission or vehicle");
+        if (mission.vehicleId !== report.vehicleId) {
+            reject(grpc.status.FAILED_PRECONDITION, "Report is not from the assigned vehicle");
+        }
+        if (!vehicleStatusForMission(report.status) ||
+            !Number.isInteger(report.progress) || report.progress < 0 || report.progress > 100 ||
+            (report.status === "COMPLETED" && report.progress !== 100)) {
+            reject(grpc.status.INVALID_ARGUMENT, "Invalid mission status or progress");
+        }
+        // Duplicates and older reports are acknowledged without modifying state.
+        if (isTerminalMission(mission.status) ||
+            (mission.status === "IN_PROGRESS" && report.status === "ASSIGNED") ||
+            (report.status !== "FAILED" && report.progress < mission.progress)) return;
 
-        if (mission) {
-            mission.status = report.status;
-            mission.progress = report.progress;
-            mission.message = report.message;
-            mission.updatedAt = now();
-
-            if (report.status === "IDLE" && report.progress === 100) {
-                const incident = state.incidents.find(item => item.id === mission.incidentId);
-                if (incident) {
-                    incident.status = "RESOLVED";
-                    incident.resolvedAt = now();
-                }
+        mission.status = report.status;
+        mission.assignmentConfirmed = true;
+        mission.progress = Math.max(mission.progress, report.progress);
+        mission.message = report.message;
+        if (report.position) mission.position = report.position;
+        mission.updatedAt = now();
+        if (report.status === "COMPLETED") {
+            const incident = state.incidents.find(item => item.id === mission.incidentId);
+            if (incident) {
+                incident.status = "RESOLVED";
+                incident.resolvedAt = now();
             }
         }
-
-        if (unit) {
-            unit.status = report.status;
-            unit.currentMissionId = report.status === "IDLE" ? null : report.missionId;
+        if (unit.currentMissionId === mission.id) {
+            unit.status = vehicleStatusForMission(report.status);
+            unit.progress = mission.progress;
+            unit.currentMissionId = isTerminalMission(report.status) ? null : mission.id;
         }
+    }
 
-        retryWaitingMissions();
-        callback(null, { received: true });
+    function reportMissionStatus(call, callback) {
+        try {
+            updateMissionStatus(call.request);
+            retryWaitingMissions();
+            callback(null, { received: true });
+        } catch (error) {
+            callback(error);
+        }
     }
 
     function createIncident(incidentData, source = "rest") {
@@ -206,6 +264,12 @@ function createMissionService({ state, islandMap, width, height, missionProto })
     function deleteIncident(incidentId) {
         const incident = state.incidents.find(item => item.id === incidentId);
         if (!incident) return null;
+        if (incident.status !== "RESOLVED" || state.missions.some(mission =>
+            mission.incidentId === incidentId && isActiveMission(mission.status))) {
+            throw Object.assign(new Error("Only resolved incidents without active missions can be deleted"), {
+                statusCode: 409
+            });
+        }
 
         state.incidents = state.incidents.filter(item => item.id !== incidentId);
         state.missions = state.missions.filter(item => item.incidentId !== incidentId);

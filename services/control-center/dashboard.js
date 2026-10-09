@@ -1,3 +1,5 @@
+const { isActiveMission } = require("../shared/missions");
+
 function generateDashboard(state) {
 
     const {
@@ -33,15 +35,17 @@ function generateDashboard(state) {
     }
 
     function renderIncidentButtons() {
-        const activeIncidents = incidents.filter(incident => incident.status !== "RESOLVED");
-        if (activeIncidents.length === 0) return "<p>No active incidents</p>";
-        return activeIncidents.map(incident => `
-            <li>
-                ${incident.id}:
-                ${incident.type} at (${incident.x}, ${incident.y}) - ${incident.status}
-                <button type="button" onclick="deleteIncident('${incident.id}')">Delete</button>
-            </li>
-        `).join("");
+        if (incidents.length === 0) return "<p>No incidents</p>";
+        return incidents.map(incident => {
+            const deletable = incident.status === "RESOLVED" && !missions.some(mission =>
+                mission.incidentId === incident.id && isActiveMission(mission.status));
+            return `
+                <li>
+                    ${incident.id}: ${incident.type} at (${incident.x}, ${incident.y}) - ${incident.status}
+                    ${deletable ? `<button type="button" onclick="deleteIncident('${incident.id}')">Delete</button>` : ""}
+                </li>
+            `;
+        }).join("");
     }
 
     function getUnitMapPosition(unit) {
@@ -207,7 +211,7 @@ function generateDashboard(state) {
         </ul>
 
         <div class="test-controls">
-            <h2>Active Incidents</h2>
+            <h2>Incidents</h2>
             <ul>
                 ${renderIncidentButtons()}
             </ul>
@@ -347,11 +351,15 @@ function generateDashboard(state) {
 
         <script>
             async function deleteIncident(id) {
-                await fetch("/incident/delete", {
+                const response = await fetch("/incident/delete", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id })
                 });
+                if (!response.ok) {
+                    alert((await response.json()).message || "Could not delete incident");
+                    return;
+                }
                 window.location.reload();
             }
 

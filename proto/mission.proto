@@ -26,14 +26,17 @@ message MissionAssignment {
 message AssignmentAck {
   bool accepted = 1;
   string vehicle_id = 2;
-  string status = 3;
+  string status = 3; // Vehicle state: IDLE, ASSIGNED, BUSY, ERROR.
   string message = 4;
+  string current_mission_id = 5;
+  string charging_status = 6;
+  int32 battery = 7;
 }
 
 message MissionReport {
   string mission_id = 1;
   string vehicle_id = 2;
-  string status = 3;
+  string status = 3; // Mission state: ASSIGNED, IN_PROGRESS, COMPLETED, FAILED.
   int32 progress = 4;
   string message = 5;
 }
