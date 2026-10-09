@@ -1,4 +1,7 @@
 const grpc = require("@grpc/grpc-js");
+const { randomUUID } = require("crypto");
+const { validateIncident } = require("./validation");
+const { requestError } = require("./errors");
 const { RPC_TIMEOUT_MS, isActiveMission, isTerminalMission, vehicleStatusForMission, canAcceptMission } = require("../shared/missions");
 
 const MISSION_RULES = {
@@ -10,8 +13,6 @@ const MISSION_RULES = {
     supply_low: { missionType: "deliver_supplies", role: "supply_rover", priority: 6 },
     material_request: { missionType: "deliver_supplies", role: "supply_rover", priority: 6 }
 };
-
-const HARD_TO_REACH_RULE = { missionType: "aerial_inspection", role: "drone", priority: 8 };
 
 function createMissionService({ state, islandMap, width, height, missionProto }) {
     function now() {
@@ -69,7 +70,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
     }
 
     function getMissionType(incident) {
-        return MISSION_RULES[incident.type] || (incident.hardToReach ? HARD_TO_REACH_RULE : null);
+        return Object.hasOwn(MISSION_RULES, incident.type) ? MISSION_RULES[incident.type] : null;
     }
 
     function assignMissionForIncident(incident) {
@@ -79,7 +80,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         const createdAt = now();
 
         const mission = {
-            id: `mission-${Date.now()}-${state.missions.length + 1}`,
+            id: `mission-${randomUUID()}`,
             incidentId: incident.id,
             type: assignment.missionType,
             target: { x: incident.x, y: incident.y },
@@ -217,6 +218,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
     }
 
     function createIncident(incidentData, source = "rest") {
+        incidentData = validateIncident(incidentData, width, height, MISSION_RULES, source);
         const now = new Date();
 
         if (source === "mqtt") {
@@ -244,7 +246,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
 
         const incident = {
             ...incidentData,
-            id: incidentData.id || `incident-${Date.now()}-${state.incidents.length + 1}`,
+            id: `incident-${randomUUID()}`,
             source,
             status: "OPEN",
             reportCount: 1,
@@ -266,9 +268,7 @@ function createMissionService({ state, islandMap, width, height, missionProto })
         if (!incident) return null;
         if (incident.status !== "RESOLVED" || state.missions.some(mission =>
             mission.incidentId === incidentId && isActiveMission(mission.status))) {
-            throw Object.assign(new Error("Only resolved incidents without active missions can be deleted"), {
-                statusCode: 409
-            });
+            throw requestError(409, "Only resolved incidents without active missions can be deleted");
         }
 
         state.incidents = state.incidents.filter(item => item.id !== incidentId);

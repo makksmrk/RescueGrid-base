@@ -1,47 +1,70 @@
 const net = require("net");
 const { generateDashboard } = require("./dashboard");
-const { parseRequest } = require("./requestParser");
+const { STATUS_CODES } = require("http");
+const { parseRequest, MAX_HEADER_BYTES, MAX_BODY_BYTES, REQUEST_TIMEOUT_MS } = require("./requestParser");
+const { requestError } = require("./errors");
+const { validateUnit, validateSensor, validateDeletion } = require("./validation");
 const { isActiveMission } = require("../shared/missions");
 
 function sendResponse(socket, statusCode, statusText, contentType, body) {
     socket.end(
         `HTTP/1.1 ${statusCode} ${statusText}\r\n` +
-        `Content-Type: ${contentType}\r\n` +
+        `Content-Type: ${contentType}; charset=utf-8\r\n` +
         `Content-Length: ${Buffer.byteLength(body)}\r\n` +
+        (statusCode === 405 ? "Allow: GET, POST\r\n" : "") +
         "Connection: close\r\n\r\n" +
         body
     );
+    socket.destroySoon();
 }
 
 function sendJson(socket, statusCode, statusText, data) {
     sendResponse(socket, statusCode, statusText, "application/json", JSON.stringify(data, null, 2));
 }
 
-function hasCompleteRequest(requestText) {
-    const headerEnd = requestText.indexOf("\r\n\r\n");
-    if (headerEnd === -1) return false;
-
-    const headerPart = requestText.slice(0, headerEnd);
-    const contentLengthLine = headerPart
-        .split("\r\n")
-        .find(line => line.toLowerCase().startsWith("content-length:"));
-    if (!contentLengthLine) return true;
-
-    const contentLength = Number(contentLengthLine.split(":")[1].trim());
-    const bodyLength = Buffer.byteLength(requestText.slice(headerEnd + 4));
-    return bodyLength >= contentLength;
+function parseJson(body) {
+    try {
+        return JSON.parse(body);
+    } catch {
+        throw requestError(400, "Body must contain valid JSON");
+    }
 }
 
 function startHttpServer({ port, state, islandMap, width, height, missions }) {
-    const server = net.createServer(socket => {
-        let requestText = "";
+    const server = net.createServer({ allowHalfOpen: true }, socket => {
+        let buffer = Buffer.alloc(0);
+        let handled = false;
+        const timer = setTimeout(() => respondError(requestError(408, "Request timed out after 5 seconds")), REQUEST_TIMEOUT_MS);
 
+        function respondError(error) {
+            handled = true;
+            clearTimeout(timer);
+            buffer = Buffer.alloc(0);
+            if (socket.destroyed || socket.writableEnded) return;
+            const code = error.statusCode || 500;
+            if (code === 500) console.error(error);
+            sendJson(socket, code, STATUS_CODES[code], {
+                message: code === 500 ? "Internal Server Error" : error.message
+            });
+        }
+
+        socket.on("error", () => socket.destroy());
+        socket.on("close", () => clearTimeout(timer));
+        socket.on("end", () => {
+            if (!handled) respondError(requestError(400, "Connection ended before the request was complete"));
+        });
         socket.on("data", data => {
-            requestText += data.toString();
-            if (!hasCompleteRequest(requestText)) return;
-
+            if (handled) return;
             try {
-                const request = parseRequest(requestText);
+                if (buffer.length + data.length > MAX_HEADER_BYTES + MAX_BODY_BYTES) {
+                    throw requestError(413, "Request exceeds size limits");
+                }
+                buffer = Buffer.concat([buffer, data]);
+                const request = parseRequest(buffer);
+                if (!request) return;
+                handled = true;
+                clearTimeout(timer);
+                buffer = Buffer.alloc(0);
                 const method = request.method;
                 const path = request.path;
                 const body = request.body;
@@ -94,9 +117,8 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 }
 
                 if (method === "POST" && path === "/unit") {
-                    const unit = JSON.parse(body);
+                    const unit = validateUnit(parseJson(body));
                     unit.registeredAt = new Date().toISOString();
-                    unit.status = unit.status || "IDLE";
                     const registeredUnit = missions.upsertUnit(unit);
                     sendJson(socket, 201, "Created", {
                         message: "Unit registered",
@@ -106,7 +128,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 }
 
                 if (method === "POST" && path === "/sensor") {
-                    const sensor = JSON.parse(body);
+                    const sensor = validateSensor(parseJson(body));
                     sensor.registeredAt = new Date().toISOString();
                     const registeredSensor = missions.upsertSensor(sensor);
                     sendJson(socket, 201, "Created", {
@@ -117,7 +139,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 }
 
                 if (method === "POST" && path === "/incident") {
-                    const result = missions.createIncident(JSON.parse(body));
+                    const result = missions.createIncident(parseJson(body));
                     sendJson(socket, 201, "Created", {
                         message: "Incident created",
                         incident: result.incident,
@@ -127,7 +149,7 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                 }
 
                 if (method === "POST" && path === "/incident/delete") {
-                    const deletedIncident = missions.deleteIncident(JSON.parse(body).id);
+                    const deletedIncident = missions.deleteIncident(validateDeletion(parseJson(body)));
                     if (!deletedIncident) {
                         sendJson(socket, 404, "Not Found", { message: "Incident not found" });
                         return;
@@ -139,19 +161,9 @@ function startHttpServer({ port, state, islandMap, width, height, missions }) {
                     return;
                 }
 
-                if (method !== "GET" && method !== "POST") {
-                    sendResponse(socket, 405, "Method Not Allowed", "text/plain", "Method Not Allowed");
-                    return;
-                }
-
-                sendResponse(socket, 404, "Not Found", "text/plain", "Route not found");
+                sendJson(socket, 404, "Not Found", { message: "Route not found" });
             } catch (error) {
-                if (error.statusCode === 409) {
-                    sendJson(socket, 409, "Conflict", { message: error.message });
-                    return;
-                }
-                console.error(error);
-                sendResponse(socket, 500, "Internal Server Error", "text/plain", "Internal Server Error");
+                respondError(error);
             }
         });
     });

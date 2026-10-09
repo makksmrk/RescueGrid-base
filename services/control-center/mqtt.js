@@ -1,4 +1,5 @@
 const mqtt = require("mqtt");
+const { validateSensor } = require("./validation");
 
 const MESSAGE_TTL_MS = 300_000;
 const MAX_COORDINATION_MESSAGES = 100;
@@ -49,30 +50,33 @@ function startMqtt({ mqttUrl, state, missions }) {
     function handleSensorEvent(payload) {
         if (!acceptMessage(payload)) return;
 
-        missions.upsertSensor(addConnectionState({
+        const sensor = validateSensor({
             id: payload.sourceId,
             type: payload.sourceType === "water-sensor" ? "water-level" : payload.sourceType,
+            measurement: payload.measurement?.name
+        });
+        const result = missions.getMissionType({ type: payload.eventType })
+            ? missions.createIncident({
+                type: payload.eventType,
+                sensor: payload.sourceId,
+                x: payload.x,
+                y: payload.y,
+                measurement: payload.measurement,
+                value: payload.measurement?.value,
+                messageId: payload.messageId,
+                createdAt: payload.timestamp,
+                hardToReach: payload.hardToReach
+            }, "mqtt") : null;
+
+        missions.upsertSensor(addConnectionState({
+            ...sensor,
             sourceType: payload.sourceType,
             status: "online",
             lastSeenAt: payload.timestamp,
             lastEventType: payload.eventType,
             lastMeasurement: payload.measurement
         }));
-
-        if (!missions.getMissionType({ type: payload.eventType, hardToReach: payload.hardToReach })) return;
-
-        const result = missions.createIncident({
-            type: payload.eventType,
-            sensor: payload.sourceId,
-            x: payload.x,
-            y: payload.y,
-            measurement: payload.measurement,
-            value: payload.measurement ? payload.measurement.value : undefined,
-            messageId: payload.messageId,
-            createdAt: payload.timestamp,
-            hardToReach: payload.hardToReach === true
-        }, "mqtt");
-
+        if (!result) return;
         console.log(result.merged
             ? `Merged MQTT incident ${result.incident.id}`
             : `Created MQTT incident ${result.incident.id}`);

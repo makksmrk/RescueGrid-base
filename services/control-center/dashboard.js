@@ -1,5 +1,9 @@
 const { isActiveMission } = require("../shared/missions");
 
+function renderJson(value) {
+    return JSON.stringify(value, null, 2).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function generateDashboard(state) {
 
     const {
@@ -326,27 +330,27 @@ function generateDashboard(state) {
 
         <details data-section="charging">
             <summary>Charging Coordination</summary>
-            <pre>${JSON.stringify(coordination, null, 2)}</pre>
+            <pre>${renderJson(coordination)}</pre>
         </details>
 
         <details data-section="units">
             <summary>Units</summary>
-            <pre>${JSON.stringify(units, null, 2)}</pre>
+            <pre>${renderJson(units)}</pre>
         </details>
 
         <details data-section="sensors">
             <summary>Sensors</summary>
-            <pre>${JSON.stringify(sensors, null, 2)}</pre>
+            <pre>${renderJson(sensors)}</pre>
         </details>
 
         <details data-section="incidents">
             <summary>Incidents</summary>
-            <pre>${JSON.stringify(incidents, null, 2)}</pre>
+            <pre>${renderJson(incidents)}</pre>
         </details>
 
         <details data-section="missions">
             <summary>Missions</summary>
-            <pre>${JSON.stringify(missions, null, 2)}</pre>
+            <pre>${renderJson(missions)}</pre>
         </details>
 
         <script>

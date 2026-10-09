@@ -120,6 +120,33 @@ Invoke-RestMethod http://localhost:8080/status
 
 If startup fails, inspect `docker compose ps` and the relevant service logs. If a host port is occupied, select another port in `.env`. For manual API examples, see `tests/rest-tests/api-examples.http`.
 
+## HTTP interface
+
+The Control Center deliberately implements a limited HTTP/1.1 interface on TCP sockets. It handles one request per connection and sends `Connection: close`. Persistent connections, pipelining, `Transfer-Encoding` (including chunked bodies), and `Expect` are not supported. Any bytes following the first complete request are not processed as another request.
+
+Requests need a single valid `Host` header and an origin-form target such as `/status`. Header names are case-insensitive; duplicate headers are rejected. Query strings do not change route selection. GET requests have no body. POST requests need `Content-Length` in bytes and `Content-Type: application/json`, optionally with `charset=utf-8`. Bodies must be uncompressed UTF-8 JSON objects.
+
+Headers are limited to 8 KiB including the final separator, and bodies to 64 KiB. A request must arrive completely within five seconds of connecting. Error responses use JSON with a `message` field: 400 for malformed requests or invalid input, 404 for an unknown route or incident, 405 for an unsupported method, 408 for timeout, 409 for a deletion conflict, 411 for missing POST length, 413 for size limits, 415 for unsupported content format, 417 for `Expect`, 501 for `Transfer-Encoding`, and 505 for an unsupported HTTP version. Unexpected server errors return 500 without exposing internal details.
+
+Vehicle registration requires `id`, a supported `role` (or matching `type`), `rpcHost`, and integer `rpcPort`. Optional `status`, `battery`, and `capabilities` are validated. Sensor registration requires `id` and `type` (`camera` or `water-level`), with an optional measurement name. IDs contain letters, digits, underscores or hyphens and are at most 128 characters.
+
+For example, the vehicle registration body is:
+
+```json
+{
+  "id": "drone-1",
+  "role": "drone",
+  "rpcHost": "drone-1",
+  "rpcPort": 50052,
+  "status": "IDLE",
+  "battery": 100
+}
+```
+
+An incident needs a supported `type` and integer `x`, `y` coordinates inside the map. Optional fields are `sensor`, `hardToReach` (boolean), `value` (finite number), and `measurement` (name, numeric value, optional unit and numeric threshold). Supported types are `person_detected`, `water_level_alert`, `blocked_route`, `structure_damage`, `bridge_damage`, `supply_low`, and `material_request`. The same incident validation applies to MQTT incident events before creation or merging.
+
+Only these input fields are stored. Additional properties are ignored; incident IDs, source, lifecycle status, timestamps, mission links and registration timestamps are controlled by the server. MQTT event IDs and timestamps come from the event envelope. Historical API examples may need adjustment to this contract when the deferred test material is updated.
+
 ## Mission lifecycle
 
 Mission states are `WAITING`, `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, and `FAILED`. Vehicle states remain `IDLE`, `ASSIGNED`, `BUSY`, and `ERROR`; charging is tracked separately. A mission consumes 20 battery points, so an available vehicle needs at least 20 points and must not be waiting for or using the charging station.
