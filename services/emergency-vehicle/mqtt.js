@@ -1,5 +1,6 @@
 const { randomUUID } = require("crypto");
 const mqtt = require("mqtt");
+const { MAX_MESSAGE_AGE_MS, validateCoordination, validateSensorEvent, compareRequests } = require("../shared/mqtt");
 
 const MAX_PROCESSED_HAZARDS = 100;
 
@@ -11,6 +12,7 @@ function createVehicleMqtt({ config, state }) {
     const peerVehicles = config.coordinationPeers.filter(peer => peer !== config.vehicleId);
     const deferredReplies = new Map();
     const receivedReplies = new Set();
+    const peerRequestClocks = new Map();
     let telemetryInterval;
     let chargingInterval;
     let chargingTimeout;
@@ -64,7 +66,7 @@ function createVehicleMqtt({ config, state }) {
     }
 
     function tickClock(remoteClock = 0) {
-        logicalClock = Math.max(logicalClock, Number(remoteClock) || 0) + 1;
+        logicalClock = Math.max(logicalClock, remoteClock) + 1;
         return logicalClock;
     }
 
@@ -108,10 +110,7 @@ function createVehicleMqtt({ config, state }) {
         if (usingResource) return true;
         if (!requestingResource || !currentRequest) return false;
 
-        if (currentRequest.logicalTime !== otherRequest.logicalTime) {
-            return currentRequest.logicalTime < otherRequest.logicalTime;
-        }
-        return config.vehicleId < otherRequest.vehicleId;
+        return compareRequests(currentRequest, otherRequest) < 0;
     }
 
     function requestChargingStation() {
@@ -144,7 +143,7 @@ function createVehicleMqtt({ config, state }) {
     }
 
     function enterChargingStation() {
-        if (!requestingResource || usingResource || receivedReplies.size < peerVehicles.length) return;
+        if (!requestingResource || usingResource || !peerVehicles.every(peer => receivedReplies.has(peer))) return;
 
         usingResource = true;
         updateCharging("USING", {
@@ -186,16 +185,16 @@ function createVehicleMqtt({ config, state }) {
     }
 
     function handleCoordinationMessage(payload) {
-        if (!payload || payload.vehicleId === config.vehicleId || payload.resourceId !== config.chargingResourceId) {
-            return;
-        }
-
-        tickClock(payload.logicalTime);
+        const time = validateCoordination(payload, config.chargingResourceId);
+        if (!peerVehicles.includes(payload.vehicleId) || Date.now() - time > MAX_MESSAGE_AGE_MS) return;
 
         if (payload.type === "REQUEST") {
+            if (payload.logicalTime <= (peerRequestClocks.get(payload.vehicleId) || 0)) return;
+            peerRequestClocks.set(payload.vehicleId, payload.logicalTime);
+            tickClock(payload.logicalTime);
             const otherRequest = {
                 vehicleId: payload.vehicleId,
-                logicalTime: Number(payload.logicalTime) || 0
+                logicalTime: payload.logicalTime
             };
 
             if (hasOwnRequestPriority(otherRequest)) {
@@ -209,9 +208,12 @@ function createVehicleMqtt({ config, state }) {
         if (
             payload.type === "REPLY" &&
             payload.toVehicleId === config.vehicleId &&
+            requestingResource && !usingResource &&
             currentRequest &&
-            (!payload.requestId || payload.requestId === currentRequest.requestId)
+            payload.requestId === currentRequest.requestId &&
+            !receivedReplies.has(payload.vehicleId)
         ) {
+            tickClock(payload.logicalTime);
             receivedReplies.add(payload.vehicleId);
             updateCharging("WAITING", {
                 requestId: currentRequest.requestId,
@@ -222,8 +224,10 @@ function createVehicleMqtt({ config, state }) {
         }
     }
 
-    function handleHazard(payload) {
+    function handleHazard(payload, topic) {
+        const time = validateSensorEvent(payload, topic);
         if (
+            Date.now() - time > MAX_MESSAGE_AGE_MS ||
             config.role === "drone" ||
             payload.eventType !== "water_level_alert" ||
             processedHazards.has(payload.messageId)
@@ -270,7 +274,7 @@ function createVehicleMqtt({ config, state }) {
         try {
             const payload = JSON.parse(message.toString());
             if (topic === coordinationTopic) handleCoordinationMessage(payload);
-            else handleHazard(payload);
+            else if (topic.startsWith("island/events/")) handleHazard(payload, topic);
         } catch (error) {
             console.error("Invalid MQTT message:", error.message);
         }

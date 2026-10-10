@@ -54,7 +54,7 @@ const missions = createMissionService({
     missionProto
 });
 
-startMqtt({ mqttUrl: MQTT_URL, state, missions });
+startMqtt({ mqttUrl: MQTT_URL, state, missions, width: WIDTH, height: HEIGHT });
 startHttpServer({
     port: PORT,
     state,

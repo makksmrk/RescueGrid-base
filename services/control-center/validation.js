@@ -1,4 +1,6 @@
 const { requestError } = require("./errors");
+const { validateEnvelope, validateTimestamp, logicalTime } = require("../shared/mqtt");
+const { vehicleStatusForMission } = require("../shared/missions");
 
 function requireValue(condition, message) {
     if (!condition) throw requestError(400, message);
@@ -94,4 +96,65 @@ function validateDeletion(data) {
     return identifier(data.id, "id");
 }
 
-module.exports = { validateUnit, validateSensor, validateIncident, validateDeletion };
+function validateTelemetry(data, topic, width, height) {
+    validateEnvelope(data);
+    requireValue(["IDLE", "ASSIGNED", "BUSY", "ERROR"].includes(data.status), "Unknown telemetry status");
+    const unit = validateUnit({ ...data, id: data.vehicleId });
+    requireValue(topic === `island/telemetry/${unit.id}`, "Telemetry topic does not match sender");
+    number(data.battery, "battery", 0, 100);
+    requireValue(Number.isInteger(data.progress), "progress must be an integer");
+    number(data.progress, "progress", 0, 100);
+    object(data.position, "position");
+    requireValue(Number.isInteger(data.position.x) && data.position.x >= 0 && data.position.x < width &&
+        Number.isInteger(data.position.y) && data.position.y >= 0 && data.position.y < height, "Invalid vehicle position");
+    requireValue(data.missionId === null || typeof data.missionId === "string", "Invalid missionId");
+    if (data.missionId !== null) identifier(data.missionId, "missionId");
+    const charging = data.charging;
+    object(charging, "charging");
+    identifier(charging.resourceId, "charging.resourceId");
+    requireValue(["NOT_REQUESTING", "WAITING", "USING"].includes(charging.status) && logicalTime(charging.logicalTime), "Invalid charging status or clock");
+    if (charging.requestId !== null || charging.status !== "NOT_REQUESTING") identifier(charging.requestId, "charging.requestId");
+    for (const key of ["waitingFor", "replies"]) {
+        if (charging[key] === undefined) continue;
+        requireValue(Array.isArray(charging[key]), `charging.${key} must be an array`);
+        charging[key].forEach(value => identifier(value, `charging.${key}`));
+    }
+    for (const key of ["requestedAt", "enteredAt", "releasedAt"]) {
+        if (charging[key] !== undefined) validateTimestamp(charging[key]);
+    }
+    if (charging.order !== undefined) {
+        object(charging.order, "charging.order");
+        identifier(charging.order.vehicleId, "charging.order.vehicleId");
+        requireValue(logicalTime(charging.order.logicalTime), "Invalid charging order clock");
+    }
+    if (data.missionReport !== null && data.missionReport !== undefined) {
+        const report = data.missionReport;
+        object(report, "missionReport");
+        identifier(report.missionId, "missionReport.missionId");
+        requireValue(vehicleStatusForMission(report.status) && Number.isInteger(report.progress) && report.progress >= 0 && report.progress <= 100 &&
+            (report.status !== "COMPLETED" || report.progress === 100), "Invalid missionReport status or progress");
+        text(report.message, "missionReport.message", 1024);
+    }
+    for (const key of ["message", "error", "reportError"]) {
+        if (data[key] !== undefined) text(data[key], key, 1024);
+    }
+    if (data.hazard !== undefined) {
+        object(data.hazard, "hazard");
+        identifier(data.hazard.type, "hazard.type");
+        identifier(data.hazard.action, "hazard.action");
+        requireValue(Number.isInteger(data.hazard.x) && data.hazard.x >= 0 && data.hazard.x < width &&
+            Number.isInteger(data.hazard.y) && data.hazard.y >= 0 && data.hazard.y < height, "Invalid hazard coordinates");
+    }
+    return unit;
+}
+
+function validateComponentStatus(data, topic) {
+    object(data);
+    identifier(data.componentId, "componentId");
+    requireValue(topic === `island/status/${data.componentId}` && ["online", "offline"].includes(data.status), "Invalid component status or topic");
+    // MQTT Last Will has no send-time timestamp; use its arrival time.
+    if (data.timestamp === undefined) requireValue(data.status === "offline", "Online status requires timestamp");
+    else validateTimestamp(data.timestamp);
+}
+
+module.exports = { validateUnit, validateSensor, validateIncident, validateDeletion, validateTelemetry, validateComponentStatus };
